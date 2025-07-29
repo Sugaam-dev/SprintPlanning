@@ -1408,7 +1408,7 @@ const SprintBoard = () => {
       }
 
       // Fetch specific sprint stories from API
-      const response = await fetch(`https://sprint-backend-73ho.onrender.com/${sprintInfo.id}`, {
+      const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
       // const response = await fetch(`http://127.0.0.1:8000/stories/${sprintInfo.id}`, {
         
         method: 'GET',
