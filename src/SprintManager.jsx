@@ -94,7 +94,7 @@ const SprintManager = () => {
 
       // Fetch specific sprint stories
       // const response = await fetch(`http://127.0.0.1:8000/stories/${sprint.id}`, {
-      const response = await fetch(`https://sprint-backend-73ho.onrender.com/${sprint.id}`, {
+      const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprint.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
