@@ -294,7 +294,7 @@ Success Criteria:
     } catch (error) {
       console.error('Error calling API:', error);
       alert(`Failed to generate stories: ${error.message}`);
-      setGeneratedStories(`❌ Failed to generate stories\n\nError: ${error.message}\n\nPlease check:\n1. API server is running at http://127.0.0.1:8000\n2. CORS is properly configured\n3. All required fields are filled\n4. API endpoint expects the correct data format\n\nTry again or contact support.`);
+      setGeneratedStories(`❌ Failed to generate stories\n\nError: ${error.message}\n\nPlease check:\n1. API server is running at https://sprint-backend-73ho.onrender.com\n2. CORS is properly configured\n3. All required fields are filled\n4. API endpoint expects the correct data format\n\nTry again or contact support.`);
     } finally {
       setIsLoading(false);
     }
