@@ -92,7 +92,7 @@ const SprintPlanningPage = () => {
         // In a real application, you would use a PDF parsing library like PDF.js
         await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
         
-        // Simulated extracted text - in reality, you'd extract actual PDF content
+        // Simulated extracted text - in reality, you d extract actual PDF content
         const extractedText = `[PDF Content Extracted from: ${file.name}]
 
 Product Requirements Document
