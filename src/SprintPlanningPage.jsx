@@ -262,7 +262,7 @@ Success Criteria:
       }
 
       // Call the API
-      const response = await fetch('http://127.0.0.1:8000/process-sprint', {
+      const response = await fetch('https://sprint-backend-73ho.onrender.com/process-sprint', {
         method: 'POST',
         body: formData,
       });
