@@ -1,885 +1,5 @@
-// import React, { useState, useEffect } from 'react';
-// import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText } from 'lucide-react';
-
-// // TaskDetail Component - Separate page for task details
-// const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
-//   const [editingField, setEditingField] = useState(null);
-//   const [editValues, setEditValues] = useState({});
-//   const [showStoryPointDropdown, setShowStoryPointDropdown] = useState(false);
-
-//   const fibonacciValues = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
-
-//   const startEditing = (field, value) => {
-//     if (field === 'storyPointEstimate') {
-//       setShowStoryPointDropdown(true);
-//       return;
-//     }
-    
-//     setEditingField(field);
-//     if (field === 'assignees') {
-//       setEditValues({ [field]: value ? value.join(', ') : '' });
-//     } else {
-//       setEditValues({ [field]: value || '' });
-//     }
-//   };
-
-//   const saveEdit = () => {
-//     if (!editingField || !task) return;
-
-//     let newValue = editValues[editingField];
-//     if (editingField === 'assignees') {
-//       newValue = newValue.split(',').map(name => name.trim()).filter(name => name);
-//     }
-    
-//     onUpdateTask(task.id, editingField, newValue);
-//     setEditingField(null);
-//     setEditValues({});
-//   };
-
-//   const handleStoryPointSelect = (value) => {
-//     onUpdateTask(task.id, 'storyPointEstimate', value);
-//     setShowStoryPointDropdown(false);
-//   };
-
-//   const cancelEdit = () => {
-//     setEditingField(null);
-//     setEditValues({});
-//     setShowStoryPointDropdown(false);
-//   };
-
-//   const handleColumnChange = (newColumn) => {
-//     onUpdateTask(task.id, 'column', newColumn);
-//   };
-
-//   const getColumnColor = (columnName) => {
-//     const column = sprintData.columns.find(col => col.name === columnName);
-//     return column ? column.color : 'bg-gray-100';
-//   };
-
-//   const EditableField = ({ label, value, field, icon }) => {
-//     const [dragOver, setDragOver] = useState(false);
-//     const [attachments, setAttachments] = useState(task.attachments?.[field] || []);
-
-//     const handleFileUpload = (files) => {
-//       const newAttachments = Array.from(files).map(file => ({
-//         id: Date.now() + Math.random(),
-//         name: file.name,
-//         type: file.type,
-//         size: file.size,
-//         url: URL.createObjectURL(file)
-//       }));
-      
-//       const updatedAttachments = [...attachments, ...newAttachments];
-//       setAttachments(updatedAttachments);
-      
-//       // Update task with new attachments
-//       const taskAttachments = { ...task.attachments, [field]: updatedAttachments };
-//       onUpdateTask(task.id, 'attachments', taskAttachments);
-//     };
-
-//     const handleDrop = (e) => {
-//       e.preventDefault();
-//       setDragOver(false);
-//       const files = e.dataTransfer.files;
-//       if (files.length > 0) {
-//         handleFileUpload(files);
-//       }
-//     };
-
-//     const handleDragOver = (e) => {
-//       e.preventDefault();
-//       setDragOver(true);
-//     };
-
-//     const handleDragLeave = (e) => {
-//       e.preventDefault();
-//       setDragOver(false);
-//     };
-
-//     const removeAttachment = (attachmentId) => {
-//       const updatedAttachments = attachments.filter(att => att.id !== attachmentId);
-//       setAttachments(updatedAttachments);
-//       const taskAttachments = { ...task.attachments, [field]: updatedAttachments };
-//       onUpdateTask(task.id, 'attachments', taskAttachments);
-//     };
-
-//     return (
-//       <div className="mb-4">
-//         <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-//         <div className="space-y-2">
-//           {editingField === field ? (
-//             <div className="space-y-3">
-//               {/* Text Input with File Upload Area - Consistent Design */}
-//               <div 
-//                 className={`relative border-2 rounded-lg transition-colors ${
-//                   dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'
-//                 }`}
-//                 onDrop={handleDrop}
-//                 onDragOver={handleDragOver}
-//                 onDragLeave={handleDragLeave}
-//               >
-//                 <div className="flex items-center space-x-2 p-3">
-//                   {icon && <div className="text-gray-400">{icon}</div>}
-//                   <input
-//                     type="text"
-//                     value={editValues[field] || ''}
-//                     onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
-//                     className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400"
-//                     placeholder={`Enter ${label.toLowerCase()}...`}
-//                     autoFocus
-//                   />
-//                   <div className="flex items-center space-x-2 border-l border-gray-200 pl-2">
-//                     <input
-//                       type="file"
-//                       multiple
-//                       accept="image/*,.pdf,.doc,.docx,.txt"
-//                       onChange={(e) => handleFileUpload(e.target.files)}
-//                       className="hidden"
-//                       id={`file-upload-${field}`}
-//                     />
-//                     <label 
-//                       htmlFor={`file-upload-${field}`} 
-//                       className="cursor-pointer p-1 text-gray-400 hover:text-gray-600 transition-colors"
-//                       title="Upload files"
-//                     >
-//                       <Upload className="w-4 h-4" />
-//                     </label>
-//                     <button
-//                       onClick={saveEdit}
-//                       className="p-1 text-green-600 hover:text-green-700 transition-colors"
-//                       title="Save"
-//                     >
-//                       <Save className="w-4 h-4" />
-//                     </button>
-//                     <button
-//                       onClick={cancelEdit}
-//                       className="p-1 text-red-600 hover:text-red-700 transition-colors"
-//                       title="Cancel"
-//                     >
-//                       <X className="w-4 h-4" />
-//                     </button>
-//                   </div>
-//                 </div>
-                
-//                 {/* Drop Zone Indicator */}
-//                 {dragOver && (
-//                   <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 rounded-lg border-2 border-dashed border-blue-400">
-//                     <div className="text-center">
-//                       <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-//                       <p className="text-sm text-blue-600 font-medium">Drop files here</p>
-//                     </div>
-//                   </div>
-//                 )}
-//               </div>
-              
-//               {/* File Upload Area Description */}
-//               <p className="text-xs text-gray-500 ml-1">
-//                 You can also drag and drop images, PDFs, and documents directly into the text field above.
-//               </p>
-//             </div>
-//           ) : (
-//             <div className="space-y-2">
-//               {/* Display Field with Consistent Styling */}
-//               <div className="border-2 border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors group">
-//                 <div className="flex items-center space-x-2 p-3">
-//                   {icon && <div className="text-gray-400">{icon}</div>}
-//                   <span className="flex-1 text-gray-800">
-//                     {field === 'assignees' ? (value ? value.join(', ') : 'Not assigned') : (value || 'Not set')}
-//                   </span>
-//                   <button
-//                     onClick={() => startEditing(field, value)}
-//                     className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition-all"
-//                     title="Edit field"
-//                   >
-//                     <Edit2 className="w-4 h-4" />
-//                   </button>
-//                 </div>
-//               </div>
-              
-//               {/* Display Attachments */}
-//               {attachments.length > 0 && (
-//                 <div className="space-y-2 ml-1">
-//                   <p className="text-xs text-gray-500 font-medium">Attachments ({attachments.length})</p>
-//                   {attachments.map((attachment) => (
-//                     <div key={attachment.id} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
-//                       {attachment.type.startsWith('image/') ? (
-//                         <Image className="w-4 h-4 text-blue-500" />
-//                       ) : (
-//                         <FileText className="w-4 h-4 text-gray-500" />
-//                       )}
-//                       <span className="text-sm text-gray-700 flex-1 truncate">{attachment.name}</span>
-//                       <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-//                         {(attachment.size / 1024).toFixed(1)}KB
-//                       </span>
-//                       <button
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           removeAttachment(attachment.id);
-//                         }}
-//                         className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-//                         title="Remove attachment"
-//                       >
-//                         <X className="w-3 h-3" />
-//                       </button>
-//                     </div>
-//                   ))}
-//                 </div>
-//               )}
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   const StoryPointField = () => (
-//     <div className="mb-4">
-//       <label className="block text-sm font-medium text-gray-700 mb-2">Story Point Estimate</label>
-//       <div className="relative">
-//         <button
-//           onClick={() => setShowStoryPointDropdown(!showStoryPointDropdown)}
-//           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-left flex items-center justify-between hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//         >
-//           <span className="text-gray-800">
-//             {task.storyPointEstimate || '10'}
-//           </span>
-//           <ChevronDown className="w-4 h-4 text-gray-400" />
-//         </button>
-        
-//         {showStoryPointDropdown && (
-//           <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">
-//             <div className="py-1 max-h-60 overflow-auto">
-//               {fibonacciValues.map((value) => (
-//                 <button
-//                   key={value}
-//                   onClick={() => handleStoryPointSelect(value)}
-//                   className={`w-full px-3 py-2 text-left hover:bg-blue-50 focus:outline-none focus:bg-blue-50 ${
-//                     (task.storyPointEstimate || 10) === value ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
-//                   }`}
-//                 >
-//                   {value}
-//                 </button>
-//               ))}
-//             </div>
-//           </div>
-//         )}
-//         <p className="text-xs text-gray-500 mt-1">Measurement of complexity and/or size of a requirement.</p>
-//       </div>
-//     </div>
-//   );
-
-//   return (
-//     <div className="p-6 bg-gray-50 min-h-screen">
-//       {/* Header */}
-//       <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
-//         <div className="flex items-center justify-between">
-//           <div className="flex items-center space-x-4">
-//             <button
-//               onClick={onBack}
-//               className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-//             >
-//               <ArrowLeft className="w-5 h-5 mr-2" />
-//               Back to Board
-//             </button>
-//             <div className="border-l border-gray-300 pl-4">
-//               <h1 className="text-xl font-bold text-gray-800 flex items-center">
-//                 <span className="text-blue-600 mr-2">#{task.id}</span>
-//                 {task.title}
-//                 {task.completed && <CheckCircle className="w-5 h-5 text-green-500 ml-2" />}
-//               </h1>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//         {/* Task Details */}
-//         <div className="lg:col-span-2">
-//           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-//             <h2 className="text-lg font-semibold text-gray-800 mb-6">Task Details</h2>
-            
-//             <StoryPointField />
-            
-//             <EditableField 
-//               label="Title" 
-//               value={task.title} 
-//               field="title" 
-//             />
-            
-//             <EditableField 
-//               label="Summary" 
-//               value={task.summary} 
-//               field="summary" 
-//             />
-            
-//             {task.name && (
-//               <EditableField 
-//                 label="Project Name" 
-//                 value={task.name} 
-//                 field="name" 
-//               />
-//             )}
-            
-//             <EditableField 
-//               label="Duration" 
-//               value={task.duration} 
-//               field="duration" 
-//               icon={<Clock className="w-4 h-4 text-gray-400" />}
-//             />
-            
-//             <EditableField 
-//               label="Start Date" 
-//               value={task.start} 
-//               field="start" 
-//               icon={<Calendar className="w-4 h-4 text-gray-400" />}
-//             />
-            
-//             <EditableField 
-//               label="Finish Date" 
-//               value={task.finish} 
-//               field="finish" 
-//               icon={<Calendar className="w-4 h-4 text-gray-400" />}
-//             />
-            
-//             <EditableField 
-//               label="Work Hours" 
-//               value={task.work} 
-//               field="work" 
-//             />
-//              <EditableField 
-//               label="Story ID" 
-//               value={task.story_id} 
-//               field="story_id" 
-//             />
-//              <EditableField 
-//               label="Epic ID" 
-//               value={task.epic_id} 
-//               field="epic_id" 
-//             />
-            
-//             <EditableField 
-//               label="Assignees" 
-//               value={task.assignees} 
-//               field="assignees" 
-//               icon={<Users className="w-4 h-4 text-gray-400" />}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Status and Actions */}
-//         <div className="lg:col-span-1">
-//           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-//             <h2 className="text-lg font-semibold text-gray-800 mb-6">Status & Actions</h2>
-            
-//             <div className="mb-6">
-//               <label className="block text-sm font-medium text-gray-700 mb-3">Current Status</label>
-//               <div className={`${getColumnColor(task.column)} rounded-lg p-3 text-center`}>
-//                 <span className="font-medium text-gray-800">{task.column}</span>
-//               </div>
-//             </div>
-
-//             <div className="mb-6">
-//               <label className="block text-sm font-medium text-gray-700 mb-3">Move to Column</label>
-//               <div className="grid grid-cols-2 gap-2">
-//                 {sprintData.columns.map((column) => (
-//                   <button
-//                     key={column.name}
-//                     onClick={() => handleColumnChange(column.name)}
-//                     disabled={task.column === column.name}
-//                     className={`${column.color} rounded-lg p-2 text-sm font-medium transition-colors ${
-//                       task.column === column.name 
-//                         ? 'opacity-50 cursor-not-allowed' 
-//                         : 'hover:opacity-80 cursor-pointer'
-//                     }`}
-//                   >
-//                     {column.name}
-//                   </button>
-//                 ))}
-//               </div>
-//             </div>
-
-//             <div className="text-xs text-gray-500 space-y-1">
-//               <div>Task ID: #{task.id}</div>
-//               <div>Story Points: {task.storyPointEstimate || 10}</div>
-//               <div>Column: {task.column}</div>
-//               {task.completed && (
-//                 <div className="text-green-600 font-medium">✓ Completed</div>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// // Main SprintBoard Component
-// const SprintBoard = () => {
-//   const [sprintData, setSprintData] = useState({
-//     title: "Loading Sprint...",
-//     duration: "",
-//     columns: [
-//       { name: "To Do", complete: 0, color: "bg-orange-100" },
-//       { name: "In Progress", complete: 50, color: "bg-blue-100" },
-//       { name: "Blocked", complete: 0, color: "bg-red-100" },
-//       { name: "Done", complete: 100, color: "bg-green-100" }
-//     ]
-//   });
-
-//   const [tasks, setTasks] = useState([]);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState(null);
-//   const [draggedTask, setDraggedTask] = useState(null);
-//   const [draggedOver, setDraggedOver] = useState(null);
-//   const [selectedTaskId, setSelectedTaskId] = useState(null);
-
-//   // Fetch sprint data when component mounts
-//   useEffect(() => {
-//     fetchSprintData();
-//   }, []);
-
-//   const fetchSprintData = async () => {
-//     try {
-//       setIsLoading(true);
-//       setError(null);
-
-//       // Get sprint info from localStorage (from SprintManager)
-//       const selectedSprintInfo = localStorage.getItem('selectedSprintInfo');
-//       const sprintInfo = selectedSprintInfo ? JSON.parse(selectedSprintInfo) : null;
-
-//       if (!sprintInfo) {
-//         throw new Error('No sprint selected. Please select a sprint from Sprint Manager.');
-//       }
-
-//       // Fetch specific sprint stories from API
-//       const response = await fetch(`http://127.0.0.1:8000/stories/${sprintInfo.id}`, {
-//         method: 'GET',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//       });
-
-//       if (!response.ok) {
-//         throw new Error(`API Error: ${response.status} ${response.statusText}`);
-//       }
-
-//       const data = await response.json();
-//       console.log('Fetched sprint stories data:', data);
-
-//       // Update sprint data
-//       setSprintData({
-//         title: `${sprintInfo.name} (Current)`,
-//         duration: `${sprintInfo.start} - ${sprintInfo.endDate}`,
-//         columns: [
-//           { name: "To Do", complete: 0, color: "bg-orange-100" },
-//           { name: "In Progress", complete: 50, color: "bg-blue-100" },
-//           { name: "Blocked", complete: 0, color: "bg-red-100" },
-//           { name: "Done", complete: 100, color: "bg-green-100" }
-//         ]
-//       });
-
-//       // Convert API data to tasks format
-//       const convertedTasks = [];
-//       let taskIdCounter = 1;
-
-//       // Process assigned stories
-//       if (data.assigned_stories && Array.isArray(data.assigned_stories)) {
-//         data.assigned_stories.forEach(story => {
-//           convertedTasks.push({
-//             id: taskIdCounter++,
-//             title: story.title || 'Untitled Story',
-//             summary: story.description || 'No description',
-//             duration: story.duration || '1 day',
-//             start: story.start_date || 'TBD',
-//             finish: story.end_date || 'TBD',
-//             work: story.work_hours || '8h',
-//                story_id: story.story_id || "US-001",
-//             epic_id:  story.epic_id || "EPIC-001",
-//             storyPointEstimate: story.story_points || 5,
-//             assignees: story.assigned_to ? [story.assigned_to] : [],
-//             attachments: {},
-//             column: story.status === 'To Do' ? 'To Do' : 
-//                    story.status === 'In Progress' ? 'In Progress' :
-//                    story.status === 'Done' ? 'Done' : 'To Do',
-//             completed: story.status === 'Done',
-//             priority: story.priority || 'Medium',
-//             role: story.role || 'General'
-//           });
-//         });
-//       }
-
-//       // Process backlog stories
-//       if (data.backlog_stories && Array.isArray(data.backlog_stories)) {
-//         data.backlog_stories.forEach(story => {
-//           convertedTasks.push({
-//             id: taskIdCounter++,
-//             title: story.title || 'Backlog Story',
-//             summary: story.description || 'No description',
-//             duration: story.duration || '1 day',
-//             start: story.start_date || 'TBD',
-//             finish: story.end_date || 'TBD',
-//             work: story.work_hours || '8h',
-//             story_id: story.story_id || "US-001",
-//             epic_id:  story.epic_id || "EPIC-001",
-//             storyPointEstimate: story.story_points || 3,
-//             assignees: story.assigned_to ? [story.assigned_to] : [],
-//             attachments: {},
-//             column: 'To Do', // Backlog items start in To Do
-//             completed: false,
-//             priority: story.priority || 'Low',
-//             role: story.role || 'General'
-//           });
-//         });
-//       }
-
-//       setTasks(convertedTasks);
-
-//     } catch (error) {
-//       console.error('Error fetching sprint data:', error);
-//       setError(error.message);
-      
-//       // Fallback to default data
-//       setSprintData({
-//         title: "Sprint 1 (Current)",
-//         duration: "Mon 9/12/22 - Sun 9/25/22",
-//         columns: [
-//           { name: "To Do", complete: 0, color: "bg-orange-100" },
-//           { name: "In Progress", complete: 50, color: "bg-blue-100" },
-//           { name: "Blocked", complete: 0, color: "bg-red-100" },
-//           { name: "Done", complete: 100, color: "bg-green-100" }
-//         ]
-//       });
-      
-//       setTasks([
-//         {
-//           id: 1,
-//           title: "Sample Task",
-//           summary: "This is a sample task",
-//           duration: "1 day",
-//           start: "Today",
-//           finish: "Today",
-//           work: "8h",
-//           story_id: "US-001",
-//           epic_id: "EPIC-001",
-//           storyPointEstimate: 5,
-//           assignees: [],
-//           attachments: {},
-//           column: "To Do"
-//         }
-//       ]);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // Get the selected task from tasks array to ensure we always have the latest data
-//   const selectedTask = selectedTaskId ? tasks.find(task => task.id === selectedTaskId) : null;
-
-//   const getTasksByColumn = (columnName) => {
-//     return tasks.filter(task => task.column === columnName);
-//   };
-
-//   const handleDragStart = (e, task) => {
-//     setDraggedTask(task);
-//     e.dataTransfer.effectAllowed = 'move';
-//     e.dataTransfer.setData('text/html', e.target.outerHTML);
-//     e.dataTransfer.setDragImage(e.target, 0, 0);
-//   };
-
-//   const handleDragOver = (e) => {
-//     e.preventDefault();
-//     e.dataTransfer.dropEffect = 'move';
-//   };
-
-//   const handleDragEnter = (e, columnName) => {
-//     e.preventDefault();
-//     setDraggedOver(columnName);
-//   };
-
-//   const handleDragLeave = (e) => {
-//     e.preventDefault();
-//     setDraggedOver(null);
-//   };
-
-//   const handleDrop = (e, columnName) => {
-//     e.preventDefault();
-//     setDraggedOver(null);
-    
-//     if (draggedTask && draggedTask.column !== columnName) {
-//       updateTaskField(draggedTask.id, 'column', columnName);
-//     }
-//     setDraggedTask(null);
-//   };
-
-//   const updateTaskField = (taskId, field, value) => {
-//     const updatedTasks = tasks.map(task => {
-//       if (task.id === taskId) {
-//         const updatedTask = { ...task, [field]: value };
-        
-//         // Update completion status based on column
-//         if (field === 'column') {
-//           if (value === 'Done') {
-//             updatedTask.completed = true;
-//           } else if (task.completed) {
-//             updatedTask.completed = false;
-//           }
-//         }
-        
-//         return updatedTask;
-//       }
-//       return task;
-//     });
-//     setTasks(updatedTasks);
-//   };
-
-//   const handleTaskClick = (task) => {
-//     setSelectedTaskId(task.id);
-//   };
-
-//   const handleBackToBoard = () => {
-//     setSelectedTaskId(null);
-//   };
-
-//   const TaskCard = ({ task }) => {
-//     const totalAttachments = task.attachments ? Object.values(task.attachments).flat().length : 0;
-    
-//     return (
-//       <div 
-//         draggable
-//         onDragStart={(e) => handleDragStart(e, task)}
-//         onClick={() => handleTaskClick(task)}
-//         className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow cursor-pointer ${
-//           draggedTask && draggedTask.id === task.id ? 'opacity-50' : ''
-//         }`}
-//       >
-//         <div className="flex items-start justify-between mb-2">
-//           <div className="flex items-center space-x-2">
-//             <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-//               {task.storyPointEstimate || 5}
-//             </span>
-//             <span className="text-sm font-medium text-gray-600">#{task.id}</span>
-//             <span className="text-sm font-semibold text-gray-800">{task.title}</span>
-//             {task.completed && <CheckCircle className="w-4 h-4 text-green-500" />}
-//             {totalAttachments > 0 && (
-//               <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded flex items-center">
-//                 <Upload className="w-3 h-3 mr-1" />
-//                 {totalAttachments}
-//               </span>
-//             )}
-//           </div>
-//         </div>
-        
-//         <div className="text-xs text-gray-500 mb-2">
-//           {/* <div className="flex items-center space-x-4">
-//             <span>Description: <span className="text-gray-700">{task.summary}</span></span>
-//           </div> */}
-//           {/* {task.role && (
-//             <div className="flex items-center space-x-4 mt-1">
-//               <span>Role: <span className="text-gray-700">{task.role}</span></span>
-//             </div>
-//           )} */}
-//           {task.priority && (
-//             <div className="flex items-center space-x-4 mt-1">
-//               <span>Priority: <span className={`font-medium ${
-//                 task.priority === 'High' ? 'text-red-600' :
-//                 task.priority === 'Medium' ? 'text-yellow-600' : 'text-green-600'
-//               }`}>{task.priority}</span></span>
-//             </div>
-//           )}
-//           {/* <div className="flex items-center space-x-4 mt-1">
-//             <span className="flex items-center">
-//               <Clock className="w-3 h-3 mr-1" />
-//               Duration: <span className="text-gray-700 ml-1">{task.duration}</span>
-//             </span>
-//           </div> */}
-//           {/* <div className="flex items-center space-x-4 mt-1">
-//             <span className="flex items-center">
-//               <Calendar className="w-3 h-3 mr-1" />
-//               Start: <span className="text-gray-700 ml-1">{task.start}</span>
-//             </span>
-//           </div> */}
-//           {/* <div className="flex items-center space-x-4 mt-1">
-//             <span className="flex items-center">
-//               <Calendar className="w-3 h-3 mr-1" />
-//               Finish: <span className="text-gray-700 ml-1">{task.finish}</span>
-//             </span>
-//           </div> */}
-//           {/* <div className="flex items-center space-x-4 mt-1">
-//             <span>Work: <span className="text-gray-700">{task.work}</span></span>
-//           </div> */}
-//           <div className="flex items-center space-x-4 mt-1">
-//             <span>Story_ID: <span className="text-gray-700">{task.story_id}</span></span>
-//           </div>
-//           <div className="flex items-center space-x-4 mt-1">
-//             <span>Epic_ID: <span className="text-gray-700">{task.epic_id}</span></span>
-//           </div>
-//         </div>
-
-//         {task.assignees && task.assignees.length > 0 && (
-//           <div className="mt-3 pt-2 border-t border-gray-100">
-//             <div className="flex items-center text-xs text-gray-600">
-//               <Users className="w-3 h-3 mr-1" />
-//               <span className="truncate">{task.assignees.join(', ')}</span>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     );
-//   };
-
-//   // Loading state
-//   if (isLoading) {
-//     return (
-//       <div className="p-6 bg-gray-50 min-h-screen">
-//         <div className="flex items-center justify-center min-h-96">
-//           <div className="text-center">
-//             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-//             <p className="text-gray-600">Loading sprint data...</p>
-//           </div>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // If a task is selected, show the TaskDetail component
-//   if (selectedTask) {
-//     return (
-//       <TaskDetail 
-//         task={selectedTask}
-//         onBack={handleBackToBoard}
-//         onUpdateTask={updateTaskField}
-//         sprintData={sprintData}
-//       />
-//     );
-//   }
-
-//   // Otherwise, show the main SprintBoard
-//   return (
-//     <div className="p-6 bg-gray-50 min-h-screen">
-//       {/* Error Display */}
-//       {error && (
-//         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-//           <div className="flex items-center">
-//             <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-//             </svg>
-//             <span className="text-red-700 text-sm">Error loading sprint: {error}</span>
-//             <button 
-//               onClick={fetchSprintData}
-//               className="ml-4 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
-//             >
-//               Retry
-//             </button>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Sprint Header */}
-//       <div className="bg-white rounded-lg shadow-sm border-2 border-orange-400 mb-6 p-4">
-//         <div className="flex items-center justify-between">
-//           <div>
-//             <h1 className="text-xl font-bold text-orange-600 mb-1">
-//               {sprintData.title}
-//             </h1>
-//             <p className="text-gray-600 text-sm">{sprintData.duration}</p>
-//           </div>
-//           <div className="flex items-center space-x-4">
-//             <div className="text-sm text-gray-600">
-//               <span className="font-medium">{tasks.length}</span> tasks total
-//             </div>
-//             <button 
-//               onClick={fetchSprintData}
-//               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium"
-//             >
-//               Refresh
-//             </button>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Kanban Board */}
-//       <div className="grid grid-cols-4 gap-4 overflow-x-auto">
-//         {sprintData.columns.map((column, index) => (
-//           <div 
-//             key={`${column.name}-${index}`} 
-//             className={`${column.color} rounded-lg shadow-sm min-h-96 transition-all duration-200 ${
-//               draggedOver === column.name ? 'ring-2 ring-blue-400 ring-opacity-50 transform scale-105' : ''
-//             }`}
-//             onDragOver={handleDragOver}
-//             onDragEnter={(e) => handleDragEnter(e, column.name)}
-//             onDragLeave={handleDragLeave}
-//             onDrop={(e) => handleDrop(e, column.name)}
-//           >
-//             {/* Column Header */}
-//             <div className="p-4 border-b border-gray-200">
-//               <div className="flex items-center justify-between">
-//                 <h3 className="font-semibold text-gray-800 mb-1">{column.name}</h3>
-//                 <span className="text-sm text-gray-600 bg-white bg-opacity-50 px-2 py-1 rounded">
-//                   {getTasksByColumn(column.name).length}
-//                 </span>
-//               </div>
-//               <p className="text-xs text-gray-600">% COMPLETE: {column.complete}</p>
-//             </div>
-
-//             {/* Column Content */}
-//             <div className="p-4">
-//               {column.name === "To Do" && (
-//                 <button className="w-full bg-green-500 hover:bg-green-600 text-white rounded-md p-3 mb-4 flex items-center justify-center text-sm font-medium transition-colors">
-//                   <Plus className="w-4 h-4 mr-2" />
-//                   New Task
-//                 </button>
-//               )}
-
-//               {/* Tasks */}
-//               <div className="space-y-3">
-//                 {getTasksByColumn(column.name).map(task => (
-//                   <TaskCard key={task.id} task={task} />
-//                 ))}
-//               </div>
-
-//               {/* Empty State */}
-//               {getTasksByColumn(column.name).length === 0 && (
-//                 <div className="text-center text-gray-500 text-sm py-8">
-//                   <div className="text-gray-400 mb-2">No tasks</div>
-//                   {draggedOver === column.name ? (
-//                     <div className="text-blue-600 font-medium">Drop task here</div>
-//                   ) : (
-//                     <div>Drag tasks here</div>
-//                   )}
-//                 </div>
-//               )}
-
-//               {/* Drop Zone Indicator */}
-//               {draggedOver === column.name && getTasksByColumn(column.name).length > 0 && (
-//                 <div className="border-2 border-dashed border-blue-400 rounded-lg p-4 text-center text-blue-600 bg-blue-50 mt-3">
-//                   Drop task here
-//                 </div>
-//               )}
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Debug Panel - Remove in production */}
-//       <div className="mt-6 p-4 bg-gray-100 rounded-lg">
-//         <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Sprint Data</h3>
-//         <div className="text-xs text-gray-600 bg-white p-2 rounded border">
-//           <div>Tasks loaded: {tasks.length}</div>
-//           <div>To Do: {getTasksByColumn('To Do').length}</div>
-//           <div>In Progress: {getTasksByColumn('In Progress').length}</div>
-//           <div>Blocked: {getTasksByColumn('Blocked').length}</div>
-//           <div>Done: {getTasksByColumn('Done').length}</div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default SprintBoard;
-
-
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag } from 'lucide-react';
+import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User } from 'lucide-react';
 
 // TaskDetail Component - Separate page for task details
 const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
@@ -902,6 +22,8 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
       setEditValues({ [field]: value ? value.join(', ') : '' });
     } else if (field === 'dependencies') {
       setEditValues({ [field]: value ? value.join(', ') : '' });
+    } else if (field === 'acceptance_criteria') {
+      setEditValues({ [field]: Array.isArray(value) ? value.join('\n') : (value || '') });
     } else {
       setEditValues({ [field]: value || '' });
     }
@@ -913,6 +35,8 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
     let newValue = editValues[editingField];
     if (editingField === 'assignees' || editingField === 'tags' || editingField === 'dependencies') {
       newValue = newValue.split(',').map(item => item.trim()).filter(item => item);
+    } else if (editingField === 'acceptance_criteria') {
+      newValue = newValue.split('\n').map(item => item.trim()).filter(item => item);
     }
     
     onUpdateTask(task.id, editingField, newValue);
@@ -944,7 +68,7 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
     return column ? column.color : 'bg-gray-100';
   };
 
-  const EditableField = ({ label, value, field, icon }) => {
+  const EditableField = ({ label, value, field, icon, isTextArea = false }) => {
     const [dragOver, setDragOver] = useState(false);
     const [attachments, setAttachments] = useState(task.attachments?.[field] || []);
 
@@ -994,6 +118,8 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
     const formatValue = (field, value) => {
       if (field === 'assignees' || field === 'tags' || field === 'dependencies') {
         return value && value.length > 0 ? value.join(', ') : 'None';
+      } else if (field === 'acceptance_criteria') {
+        return Array.isArray(value) && value.length > 0 ? value.join('\n') : 'No criteria defined';
       }
       return value || 'Not set';
     };
@@ -1004,7 +130,6 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
         <div className="space-y-2">
           {editingField === field ? (
             <div className="space-y-3">
-              {/* Text Input with File Upload Area - Consistent Design */}
               <div 
                 className={`relative border-2 rounded-lg transition-colors ${
                   dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'
@@ -1013,16 +138,26 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
               >
-                <div className="flex items-center space-x-2 p-3">
-                  {icon && <div className="text-gray-400">{icon}</div>}
-                  <input
-                    type="text"
-                    value={editValues[field] || ''}
-                    onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
-                    className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400"
-                    placeholder={`Enter ${label.toLowerCase()}...`}
-                    autoFocus
-                  />
+                <div className="flex items-start space-x-2 p-3">
+                  {icon && <div className="text-gray-400 mt-1">{icon}</div>}
+                  {isTextArea ? (
+                    <textarea
+                      value={editValues[field] || ''}
+                      onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+                      className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 resize-none min-h-[100px]"
+                      placeholder={`Enter ${label.toLowerCase()}...`}
+                      autoFocus
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={editValues[field] || ''}
+                      onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+                      className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400"
+                      placeholder={`Enter ${label.toLowerCase()}...`}
+                      autoFocus
+                    />
+                  )}
                   <div className="flex items-center space-x-2 border-l border-gray-200 pl-2">
                     <input
                       type="file"
@@ -1056,7 +191,6 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                   </div>
                 </div>
                 
-                {/* Drop Zone Indicator */}
                 {dragOver && (
                   <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 rounded-lg border-2 border-dashed border-blue-400">
                     <div className="text-center">
@@ -1067,18 +201,16 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                 )}
               </div>
               
-              {/* File Upload Area Description */}
               <p className="text-xs text-gray-500 ml-1">
                 You can also drag and drop images, PDFs, and documents directly into the text field above.
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {/* Display Field with Consistent Styling */}
               <div className="border-2 border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors group">
-                <div className="flex items-center space-x-2 p-3">
-                  {icon && <div className="text-gray-400">{icon}</div>}
-                  <span className="flex-1 text-gray-800">
+                <div className="flex items-start space-x-2 p-3">
+                  {icon && <div className="text-gray-400 mt-1">{icon}</div>}
+                  <span className="flex-1 text-gray-800 whitespace-pre-wrap">
                     {formatValue(field, value)}
                   </span>
                   <button
@@ -1091,7 +223,6 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                 </div>
               </div>
               
-              {/* Display Attachments */}
               {attachments.length > 0 && (
                 <div className="space-y-2 ml-1">
                   <p className="text-xs text-gray-500 font-medium">Attachments ({attachments.length})</p>
@@ -1215,20 +346,29 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
         {/* Task Details */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-6">Task Details</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-6">Story Details</h2>
             
             <StoryPointField />
             
             <EditableField 
-              label="Title" 
+              label="Story Name" 
               value={task.title} 
               field="title" 
             />
             
             <EditableField 
-              label="Summary" 
+              label="Description" 
               value={task.summary} 
               field="summary" 
+              isTextArea={true}
+            />
+
+            <EditableField 
+              label="Acceptance Criteria" 
+              value={task.acceptance_criteria} 
+              field="acceptance_criteria" 
+              icon={<CheckCircle className="w-4 h-4 text-gray-400" />}
+              isTextArea={true}
             />
 
             <EditableField 
@@ -1236,64 +376,40 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
               value={task.status} 
               field="status" 
             />
-            
-            {task.name && (
-              <EditableField 
-                label="Project Name" 
-                value={task.name} 
-                field="name" 
-              />
-            )}
+
+            <EditableField 
+              label="Priority" 
+              value={task.priority} 
+              field="priority" 
+              icon={<Star className="w-4 h-4 text-gray-400" />}
+            />
             
             <EditableField 
-              label="Duration" 
-              value={task.duration} 
-              field="duration" 
+              label="Epic ID" 
+              value={task.epic_id} 
+              field="epic_id" 
+              icon={<Target className="w-4 h-4 text-gray-400" />}
+            />
+            
+            <EditableField 
+              label="Story ID" 
+              value={task.story_id} 
+              field="story_id" 
+              icon={<BarChart className="w-4 h-4 text-gray-400" />}
+            />
+            
+            <EditableField 
+              label="Estimated Effort (Hours)" 
+              value={task.work} 
+              field="work" 
               icon={<Clock className="w-4 h-4 text-gray-400" />}
             />
             
             <EditableField 
-              label="Start Date" 
-              value={task.start} 
-              field="start" 
-              icon={<Calendar className="w-4 h-4 text-gray-400" />}
-            />
-            
-            <EditableField 
-              label="Finish Date" 
-              value={task.finish} 
-              field="finish" 
-              icon={<Calendar className="w-4 h-4 text-gray-400" />}
-            />
-
-            <EditableField 
-              label="Due Date" 
-              value={task.dueDate} 
-              field="dueDate" 
-              icon={<Calendar className="w-4 h-4 text-gray-400" />}
-            />
-            
-            <EditableField 
-              label="Work Hours" 
-              value={task.work} 
-              field="work" 
-            />
-             <EditableField 
-              label="Story ID" 
-              value={task.story_id} 
-              field="story_id" 
-            />
-             <EditableField 
-              label="Epic ID" 
-              value={task.epic_id} 
-              field="epic_id" 
-            />
-            
-            <EditableField 
-              label="Assignees" 
+              label="Assigned To" 
               value={task.assignees} 
               field="assignees" 
-              icon={<Users className="w-4 h-4 text-gray-400" />}
+              icon={<User className="w-4 h-4 text-gray-400" />}
             />
 
             <EditableField 
@@ -1346,12 +462,13 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
             </div>
 
             <div className="text-xs text-gray-500 space-y-1">
-              <div>Task ID: #{task.id}</div>
+              <div>Story ID: {task.story_id}</div>
+              <div>Epic ID: {task.epic_id}</div>
               <div>Story Points: {task.storyPointEstimate || 10}</div>
+              <div>Priority: {task.priority || 'Not set'}</div>
               <div>Status: {task.status || 'Not set'}</div>
               <div>Column: {task.column}</div>
               <div>Risk Flag: {task.riskFlag ? '⚠️ Yes' : '✅ No'}</div>
-              {task.dueDate && <div>Due: {task.dueDate}</div>}
               {task.dependencies && task.dependencies.length > 0 && (
                 <div>Dependencies: {task.dependencies.length}</div>
               )}
@@ -1407,10 +524,11 @@ const SprintBoard = () => {
         throw new Error('No sprint selected. Please select a sprint from Sprint Manager.');
       }
 
+      console.log('Fetching data for sprint:', sprintInfo.id);
+
       // Fetch specific sprint stories from API
-      const response = await fetch(`https://sprint-backend-73ho.onrender.com/${sprintInfo.id}`, {
       // const response = await fetch(`http://127.0.0.1:8000/stories/${sprintInfo.id}`, {
-        
+         const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1424,122 +542,65 @@ const SprintBoard = () => {
       const data = await response.json();
       console.log('Fetched sprint stories data:', data);
 
-      // Update sprint data
-      setSprintData({
-        title: `${sprintInfo.name} (Current)`,
-        duration: `${sprintInfo.start} - ${sprintInfo.endDate}`,
-        columns: [
-          { name: "To Do", complete: 0, color: "bg-orange-100" },
-          { name: "In Progress", complete: 50, color: "bg-blue-100" },
-          { name: "Blocked", complete: 0, color: "bg-red-100" },
-          { name: "Done", complete: 100, color: "bg-green-100" }
-        ]
-      });
+      // Update sprint data with the API response
+      if (data.sprint_info) {
+        setSprintData({
+          title: `${data.sprint_info.name} (Current)`,
+          duration: `${data.sprint_info.start_date} - ${data.sprint_info.end_date}`,
+          columns: [
+            { name: "To Do", complete: 0, color: "bg-orange-100" },
+            { name: "In Progress", complete: 50, color: "bg-blue-100" },
+            { name: "Blocked", complete: 0, color: "bg-red-100" },
+            { name: "Done", complete: 100, color: "bg-green-100" }
+          ]
+        });
+      }
 
       // Convert API data to tasks format
       const convertedTasks = [];
       let taskIdCounter = 1;
 
-      // Process assigned stories
-      if (data.assigned_stories && Array.isArray(data.assigned_stories)) {
-        data.assigned_stories.forEach(story => {
+      // Process stories from the API response - the structure matches your API response
+      if (data.stories && Array.isArray(data.stories)) {
+        data.stories.forEach(story => {
           convertedTasks.push({
             id: taskIdCounter++,
-            title: story.title || 'Untitled Story',
-            summary: story.description || 'No description',
-            status: story.status || 'Planned',
-            duration: story.duration || '1 day',
-            start: story.start_date || 'TBD',
-            finish: story.end_date || 'TBD',
-            dueDate: story.due_date || 'TBD',
-            work: story.work_hours || '8h',
-            story_id: story.story_id || "US-001",
-            epic_id: story.epic_id || "EPIC-001",
-            storyPointEstimate: story.story_points || 5,
-            assignees: story.assigned_to ? [story.assigned_to] : [],
+            title: story.name,
+            summary: story.description,
+            acceptance_criteria: story.acceptance_criteria || [],
+            status: story.status,
+            priority: story.priority,
+            work: story.estimated_effort_hours ? `${story.estimated_effort_hours}h` : null,
+            story_id: story.story_id,
+            epic_id: story.epic_id,
+            storyPointEstimate: story.story_points,
+            assignees: story.assigned_to_resource_id ? [story.assigned_to_resource_id] : [],
             dependencies: story.dependencies || [],
-            tags: story.tags || ['Feature'],
+            tags: story.tags || [],
             riskFlag: story.risk_flag || false,
             attachments: {},
-            column: story.status === 'To Do' ? 'To Do' : 
-                   story.status === 'In Progress' ? 'In Progress' :
-                   story.status === 'Done' ? 'Done' : 'To Do',
+            // Map status to column - using the status from API directly
+            column: story.status,
             completed: story.status === 'Done',
-            priority: story.priority || 'Medium',
-            role: story.role || 'General'
+            // Add any additional fields from API
+            sprint_id: story.sprint_id,
+            assigned_to: story.assigned_to_resource_id
           });
         });
       }
 
-      // Process backlog stories
-      if (data.backlog_stories && Array.isArray(data.backlog_stories)) {
-        data.backlog_stories.forEach(story => {
-          convertedTasks.push({
-            id: taskIdCounter++,
-            title: story.title || 'Backlog Story',
-            summary: story.description || 'No description',
-            status: story.status || 'Planned',
-            duration: story.duration || '1 day',
-            start: story.start_date || 'TBD',
-            finish: story.end_date || 'TBD',
-            dueDate: story.due_date || 'TBD',
-            work: story.work_hours || '8h',
-            story_id: story.story_id || "US-001",
-            epic_id: story.epic_id || "EPIC-001",
-            storyPointEstimate: story.story_points || 3,
-            assignees: story.assigned_to ? [story.assigned_to] : [],
-            dependencies: story.dependencies || [],
-            tags: story.tags || ['Backlog'],
-            riskFlag: story.risk_flag || false,
-            attachments: {},
-            column: 'To Do', // Backlog items start in To Do
-            completed: false,
-            priority: story.priority || 'Low',
-            role: story.role || 'General'
-          });
-        });
-      }
-
+      console.log('Converted tasks:', convertedTasks);
       setTasks(convertedTasks);
+
+      if (convertedTasks.length === 0) {
+        console.log('No stories found in API response');
+        setError('No stories found for this sprint');
+      }
 
     } catch (error) {
       console.error('Error fetching sprint data:', error);
       setError(error.message);
-      
-      // Fallback to default data
-      setSprintData({
-        title: "Sprint 1 (Current)",
-        duration: "Mon 9/12/22 - Sun 9/25/22",
-        columns: [
-          { name: "To Do", complete: 0, color: "bg-orange-100" },
-          { name: "In Progress", complete: 50, color: "bg-blue-100" },
-          { name: "Blocked", complete: 0, color: "bg-red-100" },
-          { name: "Done", complete: 100, color: "bg-green-100" }
-        ]
-      });
-      
-      setTasks([
-        {
-          id: 1,
-          title: "Sample Task",
-          summary: "This is a sample task",
-          status: "Planned",
-          duration: "1 day",
-          start: "Today",
-          finish: "Today",
-          dueDate: "Tomorrow",
-          work: "8h",
-          story_id: "US-001",
-          epic_id: "EPIC-001",
-          storyPointEstimate: 5,
-          assignees: [],
-          dependencies: [],
-          tags: ['Sample', 'Demo'],
-          riskFlag: false,
-          attachments: {},
-          column: "To Do"
-        }
-      ]);
+      setTasks([]);
     } finally {
       setIsLoading(false);
     }
@@ -1593,8 +654,10 @@ const SprintBoard = () => {
         if (field === 'column') {
           if (value === 'Done') {
             updatedTask.completed = true;
+            updatedTask.status = 'Done';
           } else if (task.completed) {
             updatedTask.completed = false;
+            updatedTask.status = value;
           }
         }
         
@@ -1625,13 +688,15 @@ const SprintBoard = () => {
           draggedTask && draggedTask.id === task.id ? 'opacity-50' : ''
         }`}
       >
-        <div className="flex items-start justify-between mb-2">
+        {/* Card Header */}
+        <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-              {task.storyPointEstimate || 5}
-            </span>
-            <span className="text-sm font-medium text-gray-600">#{task.id}</span>
-            <span className="text-sm font-semibold text-gray-800">{task.title}</span>
+            {task.storyPointEstimate && (
+              <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
+                {task.storyPointEstimate} SP
+              </span>
+            )}
+            <span className="text-sm font-medium text-gray-600">#{task.story_id}</span>
             {task.completed && <CheckCircle className="w-4 h-4 text-green-500" />}
             {task.riskFlag && <AlertTriangle className="w-4 h-4 text-red-500" />}
             {totalAttachments > 0 && (
@@ -1641,94 +706,105 @@ const SprintBoard = () => {
               </span>
             )}
           </div>
+          <div className="flex items-center space-x-1">
+            {task.priority && (
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                task.priority === 'High' ? 'bg-red-100 text-red-800' :
+                task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-green-100 text-green-800'
+              }`}>
+                {task.priority}
+              </span>
+            )}
+          </div>
         </div>
-        
-        <div className="text-xs text-gray-500 mb-2">
-          <div className="flex items-center space-x-4 mt-1">
-            <span>Status: <span className={`font-medium ${
-              task.status === 'Done' ? 'text-green-600' :
-              task.status === 'In Progress' ? 'text-blue-600' :
-              task.status === 'Blocked' ? 'text-red-600' : 'text-gray-600'
-            }`}>{task.status || 'Planned'}</span></span>
+
+        {/* Story Title */}
+        {task.title && (
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2">
+              {task.title}
+            </h3>
+          </div>
+        )}
+
+        {/* Story Description */}
+        {task.summary && (
+          <div className="mb-3">
+            <p className="text-xs text-gray-600 line-clamp-3">
+              {task.summary}
+            </p>
+          </div>
+        )}
+
+        {/* Story Details */}
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            {task.story_id && <span><strong>Story ID:</strong> {task.story_id}</span>}
+            {task.epic_id && <span><strong>Epic:</strong> {task.epic_id}</span>}
           </div>
           
-          {task.dueDate && task.dueDate !== 'TBD' && (
-            <div className="flex items-center space-x-4 mt-1">
-              <span className="flex items-center">
-                <Calendar className="w-3 h-3 mr-1" />
-                Due: <span className="text-gray-700 ml-1">{task.dueDate}</span>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            {task.work && <span><strong>Effort:</strong> {task.work}</span>}
+            {task.status && (
+              <span><strong>Status:</strong> 
+                <span className={`ml-1 font-medium ${
+                  task.status === 'Done' ? 'text-green-600' :
+                  task.status === 'In Progress' ? 'text-blue-600' :
+                  task.status === 'Blocked' ? 'text-red-600' : 'text-gray-600'
+                }`}>
+                  {task.status}
+                </span>
               </span>
+            )}
+          </div>
+
+          {/* Acceptance Criteria Count */}
+          {task.acceptance_criteria && task.acceptance_criteria.length > 0 && (
+            <div className="flex items-center text-xs text-gray-500">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              <span>{task.acceptance_criteria.length} acceptance criteria</span>
             </div>
           )}
 
+          {/* Dependencies */}
           {task.dependencies && task.dependencies.length > 0 && (
-            <div className="flex items-center space-x-4 mt-1">
-              <span className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-1 ${task.dependencies.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                Dependencies: <span className="text-red-600 font-medium ml-1">{task.dependencies.length} present</span>
-              </span>
-            </div>
-          )}
-
-          {(!task.dependencies || task.dependencies.length === 0) && (
-            <div className="flex items-center space-x-4 mt-1">
-              <span className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-                Dependencies: <span className="text-green-600 font-medium ml-1">None</span>
-              </span>
-            </div>
-          )}
-
-          {task.priority && (
-            <div className="flex items-center space-x-4 mt-1">
-              <span>Priority: <span className={`font-medium ${
-                task.priority === 'High' ? 'text-red-600' :
-                task.priority === 'Medium' ? 'text-yellow-600' : 'text-green-600'
-              }`}>{task.priority}</span></span>
-            </div>
-          )}
-
-          <div className="flex items-center space-x-4 mt-1">
-            <span>Story_ID: <span className="text-gray-700">{task.story_id}</span></span>
-          </div>
-          <div className="flex items-center space-x-4 mt-1">
-            <span>Epic_ID: <span className="text-gray-700">{task.epic_id}</span></span>
-          </div>
-
-          {task.tags && task.tags.length > 0 && (
-            <div className="flex items-center space-x-4 mt-1">
-              <span className="flex items-center">
-                <Tag className="w-3 h-3 mr-1" />
-                Tags:
-              </span>
-              <div className="flex flex-wrap gap-1">
-                {task.tags.slice(0, 3).map((tag, index) => (
-                  <span 
-                    key={index} 
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      tag.toLowerCase() === 'bug' ? 'bg-red-100 text-red-700' :
-                      tag.toLowerCase() === 'feature' ? 'bg-blue-100 text-blue-700' :
-                      tag.toLowerCase() === 'tech' ? 'bg-purple-100 text-purple-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {task.tags.length > 3 && (
-                  <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-600">
-                    +{task.tags.length - 3}
-                  </span>
-                )}
-              </div>
+            <div className="flex items-center text-xs text-red-500">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              <span>{task.dependencies.length} dependencies</span>
             </div>
           )}
         </div>
 
+        {/* Tags */}
+        {task.tags && task.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {task.tags.slice(0, 2).map((tag, index) => (
+              <span 
+                key={index} 
+                className={`px-2 py-1 rounded text-xs font-medium ${
+                  tag.toLowerCase() === 'bug' ? 'bg-red-100 text-red-700' :
+                  tag.toLowerCase() === 'feature' ? 'bg-blue-100 text-blue-700' :
+                  tag.toLowerCase() === 'enhancement' ? 'bg-purple-100 text-purple-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}
+              >
+                {tag}
+              </span>
+            ))}
+            {task.tags.length > 2 && (
+              <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-600">
+                +{task.tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Assignee */}
         {task.assignees && task.assignees.length > 0 && (
-          <div className="mt-3 pt-2 border-t border-gray-100">
+          <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center text-xs text-gray-600">
-              <Users className="w-3 h-3 mr-1" />
+              <User className="w-3 h-3 mr-1" />
               <span className="truncate">{task.assignees.join(', ')}</span>
             </div>
           </div>
@@ -1795,7 +871,10 @@ const SprintBoard = () => {
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-600">
-              <span className="font-medium">{tasks.length}</span> tasks total
+              <span className="font-medium">{tasks.length}</span> stories total
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{tasks.reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0)}</span> story points
             </div>
             <button 
               onClick={fetchSprintData}
@@ -1803,6 +882,63 @@ const SprintBoard = () => {
             >
               Refresh
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sprint Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Stories</p>
+              <p className="text-2xl font-bold text-gray-900">{tasks.length}</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BarChart className="w-5 h-5 text-blue-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Story Points</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {tasks.reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0) || 0}
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Star className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-green-600">
+                {tasks.filter(task => task.completed).length}
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Progress</p>
+              <p className="text-2xl font-bold text-indigo-600">
+                {tasks.length > 0 ? Math.round((tasks.filter(task => task.completed).length / tasks.length) * 100) : 0}%
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Target className="w-5 h-5 text-indigo-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -1828,7 +964,9 @@ const SprintBoard = () => {
                   {getTasksByColumn(column.name).length}
                 </span>
               </div>
-              <p className="text-xs text-gray-600">% COMPLETE: {column.complete}</p>
+              <p className="text-xs text-gray-600">
+                {getTasksByColumn(column.name).reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0)} story points
+              </p>
             </div>
 
             {/* Column Content */}
@@ -1836,7 +974,7 @@ const SprintBoard = () => {
               {column.name === "To Do" && (
                 <button className="w-full bg-green-500 hover:bg-green-600 text-white rounded-md p-3 mb-4 flex items-center justify-center text-sm font-medium transition-colors">
                   <Plus className="w-4 h-4 mr-2" />
-                  New Task
+                  New Story
                 </button>
               )}
 
@@ -1850,11 +988,11 @@ const SprintBoard = () => {
               {/* Empty State */}
               {getTasksByColumn(column.name).length === 0 && (
                 <div className="text-center text-gray-500 text-sm py-8">
-                  <div className="text-gray-400 mb-2">No tasks</div>
+                  <div className="text-gray-400 mb-2">No stories</div>
                   {draggedOver === column.name ? (
-                    <div className="text-blue-600 font-medium">Drop task here</div>
+                    <div className="text-blue-600 font-medium">Drop story here</div>
                   ) : (
-                    <div>Drag tasks here</div>
+                    <div>Drag stories here</div>
                   )}
                 </div>
               )}
@@ -1862,7 +1000,7 @@ const SprintBoard = () => {
               {/* Drop Zone Indicator */}
               {draggedOver === column.name && getTasksByColumn(column.name).length > 0 && (
                 <div className="border-2 border-dashed border-blue-400 rounded-lg p-4 text-center text-blue-600 bg-blue-50 mt-3">
-                  Drop task here
+                  Drop story here
                 </div>
               )}
             </div>
@@ -1870,17 +1008,82 @@ const SprintBoard = () => {
         ))}
       </div>
 
-      {/* Debug Panel - Remove in production */}
+      {/* Sprint Summary */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Sprint Breakdown</h3>
+          <div className="space-y-3">
+            {sprintData.columns.map(column => {
+              const columnTasks = getTasksByColumn(column.name);
+              const columnPoints = columnTasks.reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0);
+              return (
+                <div key={column.name} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${column.color.replace('bg-', 'bg-').replace('-100', '-500')}`}></div>
+                    <span className="text-sm font-medium text-gray-700">{column.name}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {columnTasks.length} stories • {columnPoints} points
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Story Analysis</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">High Priority</span>
+              <span className="text-sm font-medium text-red-600">
+                {tasks.filter(t => t.priority === 'High').length} stories
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Medium Priority</span>
+              <span className="text-sm font-medium text-yellow-600">
+                {tasks.filter(t => t.priority === 'Medium').length} stories
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Low Priority</span>
+              <span className="text-sm font-medium text-green-600">
+                {tasks.filter(t => t.priority === 'Low').length} stories
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">With Dependencies</span>
+              <span className="text-sm font-medium text-orange-600">
+                {tasks.filter(t => t.dependencies && t.dependencies.length > 0).length} stories
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">With Acceptance Criteria</span>
+              <span className="text-sm font-medium text-blue-600">
+                {tasks.filter(t => t.acceptance_criteria && t.acceptance_criteria.length > 0).length} stories
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Debug Panel - Shows actual API data for troubleshooting */}
       <div className="mt-6 p-4 bg-gray-100 rounded-lg">
         <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Sprint Data</h3>
         <div className="text-xs text-gray-600 bg-white p-2 rounded border">
-          <div>Tasks loaded: {tasks.length}</div>
+          <div>Stories loaded: {tasks.length}</div>
           <div>To Do: {getTasksByColumn('To Do').length}</div>
           <div>In Progress: {getTasksByColumn('In Progress').length}</div>
           <div>Blocked: {getTasksByColumn('Blocked').length}</div>
           <div>Done: {getTasksByColumn('Done').length}</div>
-          <div>Tasks with risks: {tasks.filter(t => t.riskFlag).length}</div>
-          <div>Tasks with dependencies: {tasks.filter(t => t.dependencies && t.dependencies.length > 0).length}</div>
+          <div>Total Story Points: {tasks.reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0)}</div>
+          <div>Stories with acceptance criteria: {tasks.filter(t => t.acceptance_criteria && t.acceptance_criteria.length > 0).length}</div>
+          {tasks.length > 0 && (
+            <div className="mt-2">
+              <div>Sample task data: {JSON.stringify(tasks[0], null, 2)}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

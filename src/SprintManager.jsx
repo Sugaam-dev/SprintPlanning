@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 const SprintManager = () => {
   const navigate = useNavigate();
   const [sprints, setSprints] = useState([]);
-  const [sprintData, setSprintData] = useState(null);
+  const [projectData, setProjectData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,8 +17,8 @@ const SprintManager = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
       const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
+      // const response = await fetch('http://127.0.0.1:8000/sprints', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -30,26 +30,68 @@ const SprintManager = () => {
       }
 
       const data = await response.json();
-      // console.log('Fetched sprints data:', data);
+      console.log('Fetched projects data:', data);
       
-      // Store the complete data
-      setSprintData(data);
+      // The API now returns multiple projects with unique IDs as keys
+      // Get the first (or most recent) project for now
+      const projectKeys = Object.keys(data);
+      if (projectKeys.length === 0) {
+        throw new Error('No projects found in the API response');
+      }
       
-      // Process the data to create sprint list for the table
-      const sprintList = Object.keys(data).map((key, index) => ({
-        id: key,
-        name: `Sprint ${index + 1}`,
-        days: '10d', // Default duration, can be calculated if needed
-        status: 'Not Started/Plan', // Default start date, can be dynamic
-        // endDate: 'Sun 9/25/25', // Default end date, can be calculated
-        selected: index === 0, // First sprint selected by default
-        color: index === 0 ? 'bg-orange-200' : 'bg-gray-100',
-        storiesCount: data[key].assigned_stories?.length || 0,
-        backlogCount: data[key].backlog_stories?.length || 0,
-        resourcesCount: data[key].resources?.length || 0
-      }));
+      // Use the first project, or you could implement logic to select a specific project
+      const firstProjectKey = projectKeys[0];
+      const projectData = data[firstProjectKey].project_plan;
       
-      setSprints(sprintList);
+      console.log('Using project:', projectData.project_name, 'with ID:', firstProjectKey);
+      
+      // Store the complete project data
+      setProjectData(projectData);
+      
+      // Process the sprints from the project data
+      if (projectData.sprints && Array.isArray(projectData.sprints)) {
+        const sprintList = projectData.sprints.map((sprint, index) => {
+          // Count stories for each sprint
+          const assignedStories = projectData.user_stories ? 
+            projectData.user_stories.filter(story => story.sprint_id === sprint.sprint_id) : [];
+          
+          // Calculate sprint duration in days
+          const startDate = new Date(sprint.start_date);
+          const endDate = new Date(sprint.end_date);
+          const diffTime = Math.abs(endDate - startDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          // Determine status based on dates
+          const today = new Date();
+          let status = 'Not Started';
+          if (today >= startDate && today <= endDate) {
+            status = 'In Progress';
+          } else if (today > endDate) {
+            status = 'Completed';
+          }
+
+          return {
+            id: sprint.sprint_id,
+            name: sprint.name,
+            days: `${diffDays}d`,
+            status: status,
+            startDate: sprint.start_date,
+            endDate: sprint.end_date,
+            selected: index === 0, // First sprint selected by default
+            color: index === 0 ? 'bg-orange-200' : 'bg-gray-100',
+            storiesCount: assignedStories.length,
+            backlogCount: 0, // Can be calculated if you have backlog stories
+            resourcesCount: projectData.resources?.length || 0,
+            totalStoryPoints: assignedStories.reduce((sum, story) => sum + (story.story_points || 0), 0),
+            totalEffortHours: assignedStories.reduce((sum, story) => sum + (story.estimated_effort_hours || 0), 0),
+            projectKey: firstProjectKey // Store the project key for later use
+          };
+        });
+        
+        setSprints(sprintList);
+      } else {
+        throw new Error('No sprints found in the project data');
+      }
       
     } catch (error) {
       console.error('Error fetching sprints:', error);
@@ -61,13 +103,16 @@ const SprintManager = () => {
           id: 'default-1',
           name: 'Sprint 1',
           days: '10d',
-          status: 'Not Started/Plan',
-          endDate: 'Sun 9/25/25',
+          status: 'Not Started',
+          startDate: '2025-08-01',
+          endDate: '2025-08-14',
           selected: true,
           color: 'bg-orange-200',
           storiesCount: 0,
           backlogCount: 0,
-          resourcesCount: 0
+          resourcesCount: 0,
+          totalStoryPoints: 0,
+          totalEffortHours: 0
         }
       ]);
     } finally {
@@ -92,51 +137,78 @@ const SprintManager = () => {
         button.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
       }
 
-      // Fetch specific sprint stories
-      // const response = await fetch(`http://127.0.0.1:8000/stories/${sprint.id}`, {
-      const response = await fetch(`https://sprint-backend-73ho.onrender.com/${sprint.id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Instead of fetching from a different endpoint, use the existing project data
+      if (projectData && projectData.user_stories) {
+        // Filter stories for this specific sprint
+        const sprintStories = projectData.user_stories.filter(
+          story => story.sprint_id === sprint.id
+        );
+        
+        // Create the stories data structure expected by the board
+        const storiesData = {
+          assigned_stories: sprintStories.map(story => ({
+            story_id: story.story_id,
+            epic_id: story.epic_id,
+            title: story.name,
+            description: story.description,
+            story_points: story.story_points,
+            estimated_effort_hours: story.estimated_effort_hours,
+            status: story.status,
+            priority: story.priority,
+            assigned_to: projectData.resources?.find(r => r.resource_id === story.assigned_to_resource_id)?.name || 'Unassigned',
+            dependencies: story.dependencies || [],
+            start_date: sprint.startDate,
+            end_date: sprint.endDate,
+            due_date: sprint.endDate,
+            work_hours: `${story.estimated_effort_hours}h`,
+            duration: `${story.estimated_effort_hours / 8}d`, // Assuming 8 hours per day
+            role: projectData.resources?.find(r => r.resource_id === story.assigned_to_resource_id)?.role || 'Developer'
+          })),
+          backlog_stories: [], // You can populate this if you have backlog logic
+          resources: projectData.resources || []
+        };
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        console.log(`Stories data for ${sprint.name}:`, storiesData);
+        
+        // Store both sprint info and stories data in localStorage for the board page
+        localStorage.setItem('selectedSprintData', JSON.stringify(storiesData));
+        localStorage.setItem('selectedSprintInfo', JSON.stringify({
+          ...sprint,
+          start: sprint.startDate,
+          endDate: sprint.endDate
+        }));
+        
+        // Navigate to board
+        navigate('/board');
+      } else {
+        throw new Error('No project data available');
       }
-
-      const storiesData = await response.json();
-      console.log(`Fetched stories for sprint ${sprint.name}:`, storiesData);
-      
-      // Store both sprint info and stories data in localStorage for the board page
-      localStorage.setItem('selectedSprintData', JSON.stringify(storiesData));
-      localStorage.setItem('selectedSprintInfo', JSON.stringify(sprint));
-      
-      // Navigate to board
-      navigate('/board');
       
     } catch (error) {
-      console.error('Error fetching sprint stories:', error);
-      alert(`Failed to load sprint stories: ${error.message}`);
-      
-      // Fallback: use cached data if available
-      if (sprintData && sprintData[sprint.id]) {
-        localStorage.setItem('selectedSprintData', JSON.stringify(sprintData[sprint.id]));
-        localStorage.setItem('selectedSprintInfo', JSON.stringify(sprint));
-        navigate('/board');
-      }
+      console.error('Error preparing sprint data:', error);
+      alert(`Failed to load sprint data: ${error.message}`);
     } finally {
       // Reset button state
       const button = document.querySelector(`button[data-sprint-id="${sprint.id}"]`);
       if (button) {
         button.disabled = false;
-        button.innerHTML = 'KANBAN';
+        button.innerHTML = 'VIEW';
       }
     }
   };
 
   const handleRefresh = () => {
     fetchSprints();
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: '2-digit'
+    });
   };
 
   if (isLoading) {
@@ -154,6 +226,23 @@ const SprintManager = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Project Header */}
+      {projectData && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">{projectData.project_name}</h2>
+          <p className="text-gray-600 text-sm mb-2">{projectData.description}</p>
+          <div className="flex items-center space-x-6 text-sm text-gray-700">
+            <span><strong>Project ID:</strong> {projectData.project_id}</span>
+            <span><strong>Total Story Points:</strong> {projectData.total_estimated_story_points}</span>
+            <span><strong>Total Effort:</strong> {projectData.total_estimated_effort_hours}h</span>
+            <span><strong>Duration:</strong> {formatDate(projectData.start_date)} - {formatDate(projectData.end_date)}</span>
+          </div>
+          <div className="mt-2 text-xs text-blue-600">
+            <span><strong>Vision:</strong> {projectData.product_vision}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Manage Sprints</h1>
         <div className="flex gap-3">
@@ -164,7 +253,7 @@ const SprintManager = () => {
             Refresh
           </button>
           <button 
-            onClick={() => navigate('/sprintplanning')}
+            onClick={() => navigate('/planning')}
             className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
           >
             Create New Sprint
@@ -194,13 +283,14 @@ const SprintManager = () => {
                 />
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Days</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Duration</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-              {/* <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">End Date</th> */}
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Start Date</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">End Date</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Stories</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Backlog</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Story Points</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Team</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">KANBAN BROAD</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -220,20 +310,29 @@ const SprintManager = () => {
                 <td className="px-4 py-3 text-sm text-gray-700">
                   {sprint.days}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-700">
-                  {sprint.status}
+                <td className="px-4 py-3 text-sm">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    sprint.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                    sprint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {sprint.status}
+                  </span>
                 </td>
-                {/* <td className="px-4 py-3 text-sm text-gray-700">
-                  {sprint.endDate}
-                </td> */}
+                <td className="px-4 py-3 text-sm text-gray-700">
+                  {formatDate(sprint.startDate)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-700">
+                  {formatDate(sprint.endDate)}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     {sprint.storiesCount} stories
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {sprint.backlogCount} items
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    {sprint.totalStoryPoints} points
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
@@ -247,7 +346,7 @@ const SprintManager = () => {
                     data-sprint-id={sprint.id}
                     className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[70px] h-8 flex items-center justify-center"
                   >
-                    VEIW
+                    VIEW
                   </button>
                 </td>
               </tr>
@@ -278,12 +377,50 @@ const SprintManager = () => {
         </button>
       </div>
       
+      {/* Sprint Summary Cards */}
+      {projectData && sprints.length > 0 && (
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Project Overview</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div>Total Sprints: <span className="font-medium text-gray-800">{sprints.length}</span></div>
+              <div>Total Epics: <span className="font-medium text-gray-800">{projectData.epics?.length || 0}</span></div>
+              <div>Total User Stories: <span className="font-medium text-gray-800">{projectData.user_stories?.length || 0}</span></div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Progress Status</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div>Not Started: <span className="font-medium text-gray-800">{sprints.filter(s => s.status === 'Not Started').length}</span></div>
+              <div>In Progress: <span className="font-medium text-gray-800">{sprints.filter(s => s.status === 'In Progress').length}</span></div>
+              <div>Completed: <span className="font-medium text-gray-800">{sprints.filter(s => s.status === 'Completed').length}</span></div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Resource Allocation</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div>Team Members: <span className="font-medium text-gray-800">{projectData.resources?.length || 0}</span></div>
+              <div>Avg Stories/Sprint: <span className="font-medium text-gray-800">{(projectData.user_stories?.length / sprints.length).toFixed(1)}</span></div>
+              <div>Avg Points/Sprint: <span className="font-medium text-gray-800">{(projectData.total_estimated_story_points / sprints.length).toFixed(1)}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Debug Panel - Remove in production */}
-      {sprintData && (
+      {projectData && (
         <div className="mt-6 p-4 bg-gray-100 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: API Response Preview</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Project Data Preview</h3>
           <div className="text-xs text-gray-600 bg-white p-2 rounded border max-h-32 overflow-y-auto">
-            <pre>{JSON.stringify(Object.keys(sprintData), null, 2)}</pre>
+            <div>Project ID: {projectData.project_id}</div>
+            <div>Project Name: {projectData.project_name}</div>
+            <div>Sprints: {projectData.sprints?.length || 0}</div>
+            <div>User Stories: {projectData.user_stories?.length || 0}</div>
+            <div>Resources: {projectData.resources?.length || 0}</div>
+            <div>Epics: {projectData.epics?.length || 0}</div>
+            <div>Tasks: {projectData.tasks?.length || 0}</div>
           </div>
         </div>
       )}
