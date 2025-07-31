@@ -137,36 +137,7 @@ const SprintManager = () => {
         button.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
       }
 
-      // Instead of fetching from a different endpoint, use the existing project data
-      if (projectData && projectData.user_stories) {
-        // Filter stories for this specific sprint
-        const sprintStories = projectData.user_stories.filter(
-          story => story.sprint_id === sprint.id
-        );
-        
-        // Create the stories data structure expected by the board
-        const storiesData = {
-          assigned_stories: sprintStories.map(story => ({
-            story_id: story.story_id,
-            epic_id: story.epic_id,
-            title: story.name,
-            description: story.description,
-            story_points: story.story_points,
-            estimated_effort_hours: story.estimated_effort_hours,
-            status: story.status,
-            priority: story.priority,
-            assigned_to: projectData.resources?.find(r => r.resource_id === story.assigned_to_resource_id)?.name || 'Unassigned',
-            dependencies: story.dependencies || [],
-            start_date: sprint.startDate,
-            end_date: sprint.endDate,
-            due_date: sprint.endDate,
-            work_hours: `${story.estimated_effort_hours}h`,
-            duration: `${story.estimated_effort_hours / 8}d`, // Assuming 8 hours per day
-            role: projectData.resources?.find(r => r.resource_id === story.assigned_to_resource_id)?.role || 'Developer'
-          })),
-          backlog_stories: [], // You can populate this if you have backlog logic
-          resources: projectData.resources || []
-        };
+
 
         console.log(`Stories data for ${sprint.name}:`, storiesData);
         
