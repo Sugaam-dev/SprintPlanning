@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import './App.css';
 import HomePage from './HomePage';
 import SprintPlanningPage from './SprintPlanningPage';
-import SprintLeaveTracker from './SprintLeaveTracker';
 import SprintManager from './SprintManager';
 import SprintBoard from './SprintBoard';
+import EpicManager from './EpicManager';
+import EpicsView from './view/EpicsView';
+import ProjectView from './view/ProjectView';
 // import TaskDetailPage from './TaskDetailPage';
 
 function App() {
@@ -14,10 +16,10 @@ function App() {
    <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/planning" element={<SprintPlanningPage />} />
-        <Route path="/leave" element={<SprintLeaveTracker />} />
         <Route path="/sprintmanager" element={<SprintManager />} />
          <Route path="/board" element={<SprintBoard />} />
-         {/* <Route path="/task" element={<TaskDetailPage />} /> */}
+         <Route path="/view" element={<ProjectView />} />
+          <Route path="/epics" element={<EpicsView />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
