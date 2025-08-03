@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import pmrgLogo from '../src/assets/pmrglogo.png';
 const SprintPlanningPage = () => {
   const navigate = useNavigate();
   const [productScope, setProductScope] = useState('');
@@ -322,11 +322,10 @@ Success Criteria:
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
+            <div className=" from-slate-50 to-pink-600 rounded-lg flex items-center justify-center">
+             {/* <div className="w-100 h-10 bg-gradient-to-r from-slate-50 to-pink-600 rounded-lg flex items-center justify-center"> */}
+              <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
+            </div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                 SPRINT PLANNING PAGE
               </h1>
@@ -703,10 +702,8 @@ Success Criteria:
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-4 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
+              <div className=" from-slate-50 to-pink-400 rounded-lg flex items-center justify-center">
+                <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
               </div>
               <span className="text-xl font-bold">PMRGSOLUTION</span>
             </div>

@@ -27,7 +27,7 @@ import {
   Globe,
   ArrowLeft
 } from 'lucide-react';
-
+import pmrgLogo from '../assets/pmrglogo.png';
 const ProjectView = () => {
   const navigate = useNavigate();
   const [projectData, setProjectData] = useState(null);
@@ -121,7 +121,9 @@ const ProjectView = () => {
             </button>
             <div className="border-l border-green-300 pl-4">
               <h1 className="text-4xl font-bold flex items-center">
-                <FolderOpen className="w-10 h-10 mr-4" />
+                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                  <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
+                </div>
                 Project Overview
               </h1>
               <p className="text-green-100 mt-2 text-lg">Comprehensive project insights and management</p>
@@ -171,8 +173,8 @@ const ProjectView = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <FolderOpen className="w-5 h-5 mr-2" />
+           <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10 mr-2" />
               Project Tools
             </h3>
             <ul className="space-y-2 text-gray-300">

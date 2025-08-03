@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User } from 'lucide-react';
-
+import pmrgLogo from '../src/assets/pmrglogo.png';
 // TaskDetail Component - Separate page for task details
 const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
   const [editingField, setEditingField] = useState(null);
@@ -846,6 +846,7 @@ const SprintBoard = () => {
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center">
+            
             <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -863,6 +864,9 @@ const SprintBoard = () => {
       {/* Sprint Header */}
       <div className="bg-white rounded-lg shadow-sm border-2 border-orange-400 mb-6 p-4">
         <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+            <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
+          </div>
           <div>
             <h1 className="text-xl font-bold text-orange-600 mb-1">
               {sprintData.title}
