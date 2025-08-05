@@ -8,6 +8,7 @@ import SprintBoard from './SprintBoard';
 import EpicManager from './EpicManager';
 import EpicsView from './view/EpicsView';
 import ProjectView from './view/ProjectView';
+import Backlog from './Backlog';
 // import TaskDetailPage from './TaskDetailPage';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
          <Route path="/board" element={<SprintBoard />} />
          <Route path="/view" element={<ProjectView />} />
           <Route path="/epics" element={<EpicsView />} />
+             <Route path="/backlog" element={<Backlog />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

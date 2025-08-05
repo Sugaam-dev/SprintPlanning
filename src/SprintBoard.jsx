@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User, MoreVertical, MessageCircle } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
+
 // TaskDetail Component - Separate page for task details
 const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
+  const navigate = useNavigate();
   const [editingField, setEditingField] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [showStoryPointDropdown, setShowStoryPointDropdown] = useState(false);
+  const [showDropdownMenu, setShowDropdownMenu] = useState(false);
 
   const fibonacciValues = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 
@@ -67,6 +71,33 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
     const column = sprintData.columns.find(col => col.name === columnName);
     return column ? column.color : 'bg-gray-100';
   };
+
+  const handleMoveToBacklog = () => {
+    setShowDropdownMenu(false);
+    // Navigate to backlog page
+    navigate('/backlog');
+  };
+
+  const handleDropdownToggle = () => {
+    setShowDropdownMenu(!showDropdownMenu);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-container')) {
+        setShowDropdownMenu(false);
+      }
+    };
+
+    if (showDropdownMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showDropdownMenu]);
 
   const EditableField = ({ label, value, field, icon, isTextArea = false }) => {
     const [dragOver, setDragOver] = useState(false);
@@ -339,6 +370,52 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
               </h1>
             </div>
           </div>
+          
+          {/* Three-dot menu */}
+          <div className="relative dropdown-container">
+            <button
+              onClick={handleDropdownToggle}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="More actions"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            
+            {showDropdownMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  <button
+                    onClick={handleMoveToBacklog}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-3 text-blue-500" />
+                    Move to Backlog
+                  </button>
+                  <div className="border-t border-gray-100 my-1"></div>
+                  <button
+                    onClick={() => {
+                      setShowDropdownMenu(false);
+                      // Add other actions here if needed
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    <Target className="w-4 h-4 mr-3" />
+                    Archive Story
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDropdownMenu(false);
+                      // Add clone functionality here if needed
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-3" />
+                    Clone Story
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -426,6 +503,90 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
             />
 
             <RiskFlagField />
+
+            {/* Comments Section */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.418 8-9.875 8A9.875 9.875 0 0112 12c0-4.418 4.418-8 9.875-8S21 7.582 21 12z" />
+                </svg>
+                Comments ({(task.comments || []).length})
+              </label>
+              
+              <div className="space-y-3">
+                {/* Add Comment Form */}
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target);
+                  const commentText = formData.get('comment');
+                  
+                  if (commentText.trim()) {
+                    const comment = {
+                      id: Date.now() + Math.random(),
+                      text: commentText.trim(),
+                      author: 'Current User',
+                      timestamp: new Date().toISOString(),
+                      avatar: 'CU'
+                    };
+                    
+                    const updatedComments = [...(task.comments || []), comment];
+                    onUpdateTask(task.id, 'comments', updatedComments);
+                    e.target.reset();
+                  }
+                }} className="border border-gray-300 rounded-lg bg-white">
+                  <div className="flex items-start space-x-3 p-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      CU
+                    </div>
+                    <div className="flex-1">
+                      <textarea
+                        name="comment"
+                        placeholder="Add a comment..."
+                        className="w-full bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 resize-none min-h-[80px]"
+                        required
+                      />
+                      <div className="flex items-center justify-end space-x-2 pt-2 border-t border-gray-100">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                          Comment
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+
+                {/* Existing Comments */}
+                {task.comments && task.comments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-gray-600 border-b border-gray-200 pb-2">
+                      Activity
+                    </div>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {task.comments.map((comment) => (
+                        <div key={comment.id} className="flex items-start space-x-3">
+                          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                            {comment.avatar}
+                          </div>
+                          <div className="flex-1">
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-800 text-sm">{comment.author}</span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(comment.timestamp).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 text-sm leading-relaxed">{comment.text}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -579,6 +740,7 @@ const SprintBoard = () => {
             tags: story.tags || [],
             riskFlag: story.risk_flag || false,
             attachments: {},
+            comments: [], // Initialize empty comments array
             // Map status to column - using the status from API directly
             column: story.status,
             completed: story.status === 'Done',
@@ -678,6 +840,34 @@ const SprintBoard = () => {
 
   const TaskCard = ({ task }) => {
     const totalAttachments = task.attachments ? Object.values(task.attachments).flat().length : 0;
+    const [showComments, setShowComments] = useState(false);
+    const [newComment, setNewComment] = useState('');
+    const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
+
+    const handleCommentSubmit = (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // Prevent card click
+      
+      if (newComment.trim()) {
+        const comment = {
+          id: Date.now() + Math.random(),
+          text: newComment.trim(),
+          author: 'Current User', // In real app, get from auth context
+          timestamp: new Date().toISOString(),
+          avatar: 'CU' // User initials
+        };
+        
+        const updatedComments = [...(task.comments || []), comment];
+        updateTaskField(task.id, 'comments', updatedComments);
+        setNewComment('');
+        setShowComments(false);
+      }
+    };
+
+    const handleCommentClick = (e) => {
+      e.stopPropagation(); // Prevent card click
+      setShowComments(!showComments);
+    };
     
     return (
       <div 
@@ -809,6 +999,93 @@ const SprintBoard = () => {
             </div>
           </div>
         )}
+
+        {/* Comments Section */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handleCommentClick}
+              className="flex items-center text-xs text-gray-500 hover:text-blue-600 transition-colors"
+            >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.418 8-9.875 8A9.875 9.875 0 0112 12c0-4.418 4.418-8 9.875-8S21 7.582 21 12z" />
+              </svg>
+              Comment ({(task.comments || []).length})
+            </button>
+            
+            {lastComment && (
+              <div className="flex items-center text-xs text-gray-400">
+                <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] mr-1">
+                  {lastComment.avatar}
+                </div>
+                <span className="truncate max-w-20">"{lastComment.text}"</span>
+              </div>
+            )}
+          </div>
+
+          {/* Comment Input */}
+          {showComments && (
+            <form onSubmit={handleCommentSubmit} className="mt-2" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start space-x-2">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                  CU
+                </div>
+                <div className="flex-1">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="w-full text-xs border border-gray-300 rounded-md p-2 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows="2"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-end space-x-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowComments(false);
+                        setNewComment('');
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim()}
+                      className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Existing Comments */}
+              {task.comments && task.comments.length > 0 && (
+                <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                  {task.comments.map((comment) => (
+                    <div key={comment.id} className="flex items-start space-x-2 text-xs">
+                      <div className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center text-white text-[10px]">
+                        {comment.avatar}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-700">{comment.author}</span>
+                          <span className="text-gray-400">
+                            {new Date(comment.timestamp).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 mt-1">{comment.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </form>
+          )}
+        </div>
       </div>
     );
   };
