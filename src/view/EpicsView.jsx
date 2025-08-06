@@ -251,9 +251,9 @@ const EpicsView = () => {
             </button>
             <div className="border-l border-indigo-300 pl-4">
              <h1 className="text-4xl font-bold flex items-center">
-  <div className=" bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
-    <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
-  </div>
+  {/* <div className=" bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
+    <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+  {/* </div> */}
   Epic Management
 </h1>
               <p className="text-indigo-100 mt-2 text-lg">Plan, track, and manage your project epics</p>

@@ -121,9 +121,9 @@ const ProjectView = () => {
             </button>
             <div className="border-l border-green-300 pl-4">
               <h1 className="text-4xl font-bold flex items-center">
-                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
-                  <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
-                </div>
+                {/* <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
+                  <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+                {/* </div> */}
                 Project Overview
               </h1>
               <p className="text-green-100 mt-2 text-lg">Comprehensive project insights and management</p>

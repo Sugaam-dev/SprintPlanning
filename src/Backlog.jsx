@@ -32,10 +32,21 @@ import {
   RefreshCw,
   BookOpen,
   Users,
-  TrendingUp
+  TrendingUp,
+   X
 } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
 
+
+// Utility functions for localStorage management
+const getBacklogItems = () => {
+  const items = localStorage.getItem('backlogItems');
+  return items ? JSON.parse(items) : [];
+};
+
+const setBacklogItems = (items) => {
+  localStorage.setItem('backlogItems', JSON.stringify(items));
+};
 const Backlog = () => {
   const navigate = useNavigate();
   
@@ -57,7 +68,7 @@ const Backlog = () => {
   const [showAddStoryModal, setShowAddStoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'board'
-
+  const [notification, setNotification] = useState(null);
   // Sample backlog data (in real app, this would come from API)
   const [sampleBacklogData] = useState([
     {
@@ -187,16 +198,66 @@ const Backlog = () => {
     loadBacklogData();
   }, []);
 
+
+    // Listen for backlog events from SprintBoard
+    useEffect(() => {
+      const handleBacklogItemAdded = (event) => {
+        const { item, action } = event.detail;
+        
+        setNotification({
+          type: 'success',
+          message: `Story "${item.title}" has been ${action} successfully!`,
+          timestamp: Date.now()
+        });
+  
+        // Reload backlog data to show the new item
+        loadBacklogData();
+  
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => setNotification(null), 5000);
+      };
+  
+      window.addEventListener('backlogItemAdded', handleBacklogItemAdded);
+      return () => window.removeEventListener('backlogItemAdded', handleBacklogItemAdded);
+    }, []);
+  
   const loadBacklogData = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get items moved from sprints
+      const sprintMovedItems = getBacklogItems();
       
-      // In real app, fetch from API
-      setBacklogItems(sampleBacklogData);
+      // Combine with default backlog data, giving priority to sprint-moved items
+      const combinedItems = [...sprintMovedItems];
+      
+      // Add default items that don't already exist (based on ID)
+     sampleBacklogData.forEach(defaultItem => {
+        const exists = sprintMovedItems.some(item => item.id === defaultItem.id);
+        if (!exists) {
+          combinedItems.push(defaultItem);
+        }
+      });
+      
+      // Sort by priority and then by creation date (newest first for sprint-moved items)
+      combinedItems.sort((a, b) => {
+        // Sprint-moved items get higher priority
+        if (a.movedFromSprint && !b.movedFromSprint) return -1;
+        if (!a.movedFromSprint && b.movedFromSprint) return 1;
+        
+        // Then sort by priority
+        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        // Finally by date (newest first)
+        return new Date(b.createdDate) - new Date(a.createdDate);
+      });
+      
+      setBacklogItems(combinedItems);
+      
+      console.log('Loaded backlog items:', combinedItems);
       
     } catch (error) {
       console.error('Error loading backlog data:', error);
@@ -205,6 +266,7 @@ const Backlog = () => {
       setIsLoading(false);
     }
   };
+
 
   // Get unique values for filters
   const getUniqueEpics = () => {
@@ -294,6 +356,51 @@ const Backlog = () => {
     }
   };
 
+    // Delete item from backlog
+  const handleDeleteItem = (itemId) => {
+    if (window.confirm('Are you sure you want to delete this story from the backlog?')) {
+      const updatedItems = backlogItems.filter(item => item.id !== itemId);
+      setBacklogItems(updatedItems);
+      setBacklogItems(updatedItems);
+      
+      // Also update localStorage
+      const sprintMovedItems = updatedItems.filter(item => item.movedFromSprint);
+      setBacklogItems(sprintMovedItems);
+      
+      setNotification({
+        type: 'success',
+        message: 'Story deleted from backlog successfully!',
+        timestamp: Date.now()
+      });
+      
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  // Move item back to sprint
+  const handleMoveToSprint = (item) => {
+    if (window.confirm(`Move "${item.title}" back to sprint planning?`)) {
+      // Remove from backlog
+      const updatedBacklogItems = backlogItems.filter(i => i.id !== item.id);
+      setBacklogItems(updatedBacklogItems);
+      
+      // Update localStorage
+      const sprintMovedItems = updatedBacklogItems.filter(item => item.movedFromSprint);
+      setBacklogItems(sprintMovedItems);
+      
+      setNotification({
+        type: 'success',
+        message: `Story "${item.title}" moved back to sprint planning!`,
+        timestamp: Date.now()
+      });
+      
+      setTimeout(() => setNotification(null), 3000);
+      
+      // Navigate to sprint planning
+      navigate('/planning');
+    }
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e, item) => {
     setDraggedItem(item);
@@ -333,6 +440,7 @@ const Backlog = () => {
       case 'In Progress': return 'bg-orange-100 text-orange-800';
       case 'Blocked': return 'bg-red-100 text-red-800';
       case 'Done': return 'bg-green-100 text-green-800';
+      case 'Moved from Sprint': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -363,7 +471,9 @@ const Backlog = () => {
       <div 
         className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 ${
           isSelected ? 'ring-2 ring-blue-500 border-blue-300' : ''
-        } ${draggedItem?.id === item.id ? 'opacity-50' : ''}`}
+        } ${draggedItem?.id === item.id ? 'opacity-50' : ''} ${
+          item.movedFromSprint ? 'border-l-4 border-l-purple-500' : ''
+        }`}
         draggable
         onDragStart={(e) => handleDragStart(e, item)}
         onDragEnd={handleDragEnd}
@@ -395,6 +505,12 @@ const Backlog = () => {
                       Risk
                     </span>
                   )}
+                                   {item.movedFromSprint && (
+                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                       <Zap className="w-3 h-3 mr-1" />
+                                       From Sprint
+                                     </span>
+                                   )}
                 </div>
                 
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
@@ -424,6 +540,12 @@ const Backlog = () => {
                       <span>{item.attachments}</span>
                     </div>
                   )}
+                   {item.originalSprintId && (
+                                      <div className="flex items-center">
+                                        <Zap className="w-4 h-4 mr-1 text-purple-500" />
+                                        <span>Sprint {item.originalSprintId}</span>
+                                      </div>
+                                    )}
                 </div>
               </div>
             </div>
@@ -467,7 +589,10 @@ const Backlog = () => {
                         View Details
                       </button>
                       <button
-                        onClick={() => setShowDropdown(false)}
+                         onClick={() => {
+                            handleMoveToSprint(item);
+                            setShowDropdown(false);
+                          }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         <Move className="w-4 h-4 mr-2" />
@@ -482,7 +607,10 @@ const Backlog = () => {
                       </button>
                       <div className="border-t border-gray-100"></div>
                       <button
-                        onClick={() => setShowDropdown(false)}
+                    onClick={() => {
+                          handleDeleteItem(item.id);
+                          setShowDropdown(false);
+                        }}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -555,7 +683,38 @@ const Backlog = () => {
                   ))}
                 </ul>
               </div>
-              
+               {/* Sprint Information (if moved from sprint) */}
+                            {item.movedFromSprint && (
+                              <div className="lg:col-span-2 pt-3 border-t border-gray-200">
+                                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                  <Zap className="w-4 h-4 mr-2 text-purple-500" />
+                                  Sprint Information
+                                </h4>
+                                <div className="bg-purple-50 rounded-lg p-3">
+                                  <div className="grid grid-cols-2 gap-4 text-xs text-purple-700">
+                                    {item.originalSprintId && (
+                                      <div>
+                                        <span className="font-medium">Original Sprint:</span>
+                                        <br />
+                                        {item.originalSprintId}
+                                      </div>
+                                    )}
+                                    <div>
+                                      <span className="font-medium">Moved on:</span>
+                                      <br />
+                                      {new Date(item.lastModified).toLocaleDateString()}
+                                    </div>
+                                    {item.comments && item.comments.length > 0 && (
+                                      <div>
+                                        <span className="font-medium">Comments:</span>
+                                        <br />
+                                        {item.comments.length} comments from sprint
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
               {/* Metadata */}
               <div className="lg:col-span-2 pt-3 border-t border-gray-200">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-500">
@@ -602,9 +761,24 @@ const Backlog = () => {
   }
 
   const filteredItems = getFilteredAndSortedItems();
+const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
 
   return (
     <div className="min-h-screen bg-gray-50">
+
+       {/* Notification */}
+            {notification && (
+              <div className="fixed top-4 right-4 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium">{notification.message}</span>
+                <button
+                  onClick={() => setNotification(null)}
+                  className="ml-2 text-green-600 hover:text-green-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -664,6 +838,20 @@ const Backlog = () => {
             </div>
           </div>
         )}
+    
+
+         {/* Sprint Integration Notice */}
+               {sprintMovedItems.length > 0 && (
+                 <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                   <div className="flex items-center">
+                     <Zap className="w-5 h-5 text-purple-500 mr-2" />
+                     <span className="text-purple-700 text-sm font-medium">
+                       {sprintMovedItems.length} story{sprintMovedItems.length !== 1 ? 's' : ''} moved from sprint{sprintMovedItems.length !== 1 ? 's' : ''} to backlog
+                     </span>
+                   </div>
+                 </div>
+               )}
+
 
         {/* Backlog Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -891,6 +1079,12 @@ const Backlog = () => {
             >
               {filteredItems.every(item => selectedItems.includes(item.id)) ? 'Deselect All' : 'Select All'}
             </button>
+             {sprintMovedItems.length > 0 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <Zap className="w-3 h-3 mr-1" />
+                            {sprintMovedItems.length} from sprints
+                          </span>
+                        )}
           </div>
           
           <div className="flex items-center space-x-2">
@@ -967,14 +1161,23 @@ const Backlog = () => {
                   : 'Start by adding your first user story to the backlog.'
                 }
               </p>
-              {(!searchTerm && filterPriority === 'all' && filterEpic === 'all' && filterStatus === 'all') && (
-                <button 
-                  onClick={() => setShowAddStoryModal(true)}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 mx-auto"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Add First Story</span>
-                </button>
+             {(!searchTerm && filterPriority === 'all' && filterEpic === 'all' && filterStatus === 'all') && (
+                             <div className="flex items-center justify-center space-x-4">
+                               <button 
+                                 onClick={() => setShowAddStoryModal(true)}
+                                 className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                               >
+                                 <Plus className="w-5 h-5" />
+                                 <span>Add First Story</span>
+                               </button>
+                               <button 
+                                 onClick={() => navigate('/board')}
+                                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                               >
+                                 <Zap className="w-5 h-5" />
+                                 <span>Go to Sprint Board</span>
+                               </button>
+                             </div>
               )}
             </div>
           )}

@@ -2,6 +2,65 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User, MoreVertical, MessageCircle } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
+// Utility functions for localStorage management
+const getBacklogItems = () => {
+  const items = localStorage.getItem('backlogItems');
+  return items ? JSON.parse(items) : [];
+};
+
+const setBacklogItems = (items) => {
+  localStorage.setItem('backlogItems', JSON.stringify(items));
+};
+
+const addToBacklog = (task) => {
+  const existingItems = getBacklogItems();
+  
+  // Convert sprint task to backlog item format
+  const backlogItem = {
+    id: task.story_id || task.id,
+    title: task.title,
+    description: task.summary || task.description,
+    priority: task.priority || 'Medium',
+    storyPoints: task.storyPointEstimate || 0,
+    epic: task.epic_id || 'Unassigned',
+    status: 'Moved from Sprint',
+    assignee: Array.isArray(task.assignees) ? task.assignees.join(', ') : (task.assignees || 'Unassigned'),
+    estimatedHours: parseInt(task.work?.replace('h', '')) || 0,
+    tags: task.tags || [],
+    acceptanceCriteria: task.acceptance_criteria || [],
+    createdDate: new Date().toISOString().split('T')[0],
+    lastModified: new Date().toISOString().split('T')[0],
+    businessValue: task.priority || 'Medium',
+    riskFlag: task.riskFlag || false,
+    dependencies: task.dependencies || [],
+    attachments: task.attachments ? Object.values(task.attachments).flat().length : 0,
+    movedFromSprint: true,
+    originalSprintId: task.sprint_id,
+    comments: task.comments || []
+  };
+  
+  // Check if item already exists in backlog
+  const existingIndex = existingItems.findIndex(item => item.id === backlogItem.id);
+  
+  if (existingIndex !== -1) {
+    // Update existing item
+    existingItems[existingIndex] = { ...existingItems[existingIndex], ...backlogItem };
+  } else {
+    // Add new item
+    existingItems.unshift(backlogItem); // Add to beginning of array
+  }
+  
+  setBacklogItems(existingItems);
+  
+  // Show success notification
+  const event = new CustomEvent('backlogItemAdded', { 
+    detail: { 
+      item: backlogItem,
+      action: existingIndex !== -1 ? 'updated' : 'added'
+    } 
+  });
+  window.dispatchEvent(event);
+};
 
 // TaskDetail Component - Separate page for task details
 const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
@@ -10,7 +69,7 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
   const [editValues, setEditValues] = useState({});
   const [showStoryPointDropdown, setShowStoryPointDropdown] = useState(false);
   const [showDropdownMenu, setShowDropdownMenu] = useState(false);
-
+  const [isMovingToBacklog, setIsMovingToBacklog] = useState(false);
   const fibonacciValues = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 
   const startEditing = (field, value) => {
@@ -72,10 +131,25 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
     return column ? column.color : 'bg-gray-100';
   };
 
-  const handleMoveToBacklog = () => {
+   const handleMoveToBacklog = async () => {
+    setIsMovingToBacklog(true);
     setShowDropdownMenu(false);
-    // Navigate to backlog page
-    navigate('/backlog');
+    
+    try {
+      // Add task to backlog
+      addToBacklog(task);
+      
+      // Show success message
+      alert(`Story "${task.title}" has been moved to backlog successfully!`);
+      
+      // Navigate to backlog page
+      navigate('/backlog');
+    } catch (error) {
+      console.error('Error moving to backlog:', error);
+      alert('Failed to move story to backlog. Please try again.');
+    } finally {
+      setIsMovingToBacklog(false);
+    }
   };
 
   const handleDropdownToggle = () => {
@@ -377,8 +451,13 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
               onClick={handleDropdownToggle}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="More actions"
-            >
-              <MoreVertical className="w-5 h-5" />
+             disabled={isMovingToBacklog}
+                        >
+                          {isMovingToBacklog ? (
+                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <MoreVertical className="w-5 h-5" />
+                          )}
             </button>
             
             {showDropdownMenu && (
@@ -386,11 +465,12 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                 <div className="py-1">
                   <button
                     onClick={handleMoveToBacklog}
+                     disabled={isMovingToBacklog}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4 mr-3 text-blue-500" />
-                    Move to Backlog
-                  </button>
+                                       {isMovingToBacklog ? 'Moving to Backlog...' : 'Move to Backlog'}
+                                     </button>
                   <div className="border-t border-gray-100 my-1"></div>
                   <button
                     onClick={() => {
@@ -504,7 +584,7 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
 
             <RiskFlagField />
 
-            {/* Comments Section */}
+              {/* Comments Section */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                 <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,31 +701,56 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
                 ))}
               </div>
             </div>
-
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>Story ID: {task.story_id}</div>
-              <div>Epic ID: {task.epic_id}</div>
-              <div>Story Points: {task.storyPointEstimate || 10}</div>
-              <div>Priority: {task.priority || 'Not set'}</div>
-              <div>Status: {task.status || 'Not set'}</div>
-              <div>Column: {task.column}</div>
-              <div>Risk Flag: {task.riskFlag ? '⚠️ Yes' : '✅ No'}</div>
-              {task.dependencies && task.dependencies.length > 0 && (
-                <div>Dependencies: {task.dependencies.length}</div>
-              )}
-              {task.tags && task.tags.length > 0 && (
-                <div>Tags: {task.tags.length}</div>
-              )}
-              {task.completed && (
-                <div className="text-green-600 font-medium">✓ Completed</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+            
+                        {/* Move to Backlog Button */}
+                        {/* <div className="mb-6">
+                          <button
+                            onClick={handleMoveToBacklog}
+                            disabled={isMovingToBacklog}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isMovingToBacklog ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Moving to Backlog...</span>
+                              </>
+                            ) : (
+                              <>
+                                <ArrowLeft className="w-4 h-4" />
+                                <span>Move to Backlog</span>
+                              </>
+                            )}
+                          </button>
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            This will remove the story from the current sprint and add it to the product backlog
+                          </p>
+                        </div> */}
+            
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div>Story ID: {task.story_id}</div>
+                          <div>Epic ID: {task.epic_id}</div>
+                          <div>Story Points: {task.storyPointEstimate || 10}</div>
+                          <div>Priority: {task.priority || 'Not set'}</div>
+                          <div>Status: {task.status || 'Not set'}</div>
+                          <div>Column: {task.column}</div>
+                          <div>Risk Flag: {task.riskFlag ? '⚠️ Yes' : '✅ No'}</div>
+                          {task.dependencies && task.dependencies.length > 0 && (
+                            <div>Dependencies: {task.dependencies.length}</div>
+                          )}
+                          {task.tags && task.tags.length > 0 && (
+                            <div>Tags: {task.tags.length}</div>
+                          )}
+                          {task.completed && (
+                            <div className="text-green-600 font-medium">✓ Completed</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            };
+            
 
 // Main SprintBoard Component
 const SprintBoard = () => {
@@ -666,6 +771,24 @@ const SprintBoard = () => {
   const [draggedTask, setDraggedTask] = useState(null);
   const [draggedOver, setDraggedOver] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+const [notification, setNotification] = useState(null);
+ // Listen for backlog events
+  useEffect(() => {
+    const handleBacklogItemAdded = (event) => {
+      const { item, action } = event.detail;
+      setNotification({
+        type: 'success',
+        message: `Story "${item.title}" has been ${action} in backlog successfully!`,
+        timestamp: Date.now()
+      });
+
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+    };
+
+    window.addEventListener('backlogItemAdded', handleBacklogItemAdded);
+    return () => window.removeEventListener('backlogItemAdded', handleBacklogItemAdded);
+  }, []);
 
   // Fetch sprint data when component mounts
   useEffect(() => {
@@ -837,11 +960,14 @@ const SprintBoard = () => {
   const handleBackToBoard = () => {
     setSelectedTaskId(null);
   };
-
+const removeTaskFromSprint = (taskId) => {
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  };
   const TaskCard = ({ task }) => {
     const totalAttachments = task.attachments ? Object.values(task.attachments).flat().length : 0;
     const [showComments, setShowComments] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
     const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
 
     const handleCommentSubmit = (e) => {
@@ -867,6 +993,25 @@ const SprintBoard = () => {
     const handleCommentClick = (e) => {
       e.stopPropagation(); // Prevent card click
       setShowComments(!showComments);
+    };
+      const handleMoveToBacklog = (e) => {
+      e.stopPropagation(); // Prevent card click
+      setShowDropdown(false);
+      
+      // Add to backlog
+      addToBacklog(task);
+      
+      // Remove from current sprint
+      removeTaskFromSprint(task.id);
+      
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: `Story "${task.title}" moved to backlog successfully!`,
+        timestamp: Date.now()
+      });
+      
+      setTimeout(() => setNotification(null), 5000);
     };
     
     return (
@@ -906,8 +1051,34 @@ const SprintBoard = () => {
                 {task.priority}
               </span>
             )}
-          </div>
-        </div>
+            {/* Quick Action Menu */}
+                     <div className="relative">
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setShowDropdown(!showDropdown);
+                         }}
+                         className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                       >
+                         <MoreVertical className="w-3 h-3" />
+                       </button>
+                       
+                       {showDropdown && (
+                         <div className="absolute right-0 top-6 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                           <div className="py-1">
+                             <button
+                               onClick={handleMoveToBacklog}
+                               className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                             >
+                               <ArrowLeft className="w-3 h-3 mr-2 text-purple-500" />
+                               Move to Backlog
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </div>
 
         {/* Story Title */}
         {task.title && (
@@ -1119,6 +1290,20 @@ const SprintBoard = () => {
   // Otherwise, show the main SprintBoard
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Notification */}
+            {notification && (
+              <div className="fixed top-4 right-4 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium">{notification.message}</span>
+                <button
+                  onClick={() => setNotification(null)}
+                  className="ml-2 text-green-600 hover:text-green-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+      
       {/* Error Display */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1141,9 +1326,9 @@ const SprintBoard = () => {
       {/* Sprint Header */}
       <div className="bg-white rounded-lg shadow-sm border-2 border-orange-400 mb-6 p-4">
         <div className="flex items-center justify-between">
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-            <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
-          </div>
+          {/* <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center"> */}
+            <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+          {/* </div> */}
           <div>
             <h1 className="text-xl font-bold text-orange-600 mb-1">
               {sprintData.title}
@@ -1157,12 +1342,12 @@ const SprintBoard = () => {
             <div className="text-sm text-gray-600">
               <span className="font-medium">{tasks.reduce((sum, task) => sum + (task.storyPointEstimate || 0), 0)}</span> story points
             </div>
-            <button 
+            {/* <button 
               onClick={fetchSprintData}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium"
             >
               Refresh
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -1252,12 +1437,12 @@ const SprintBoard = () => {
 
             {/* Column Content */}
             <div className="p-4">
-              {column.name === "To Do" && (
+              {/* {column.name === "To Do" && (
                 <button className="w-full bg-green-500 hover:bg-green-600 text-white rounded-md p-3 mb-4 flex items-center justify-center text-sm font-medium transition-colors">
                   <Plus className="w-4 h-4 mr-2" />
                   New Story
                 </button>
-              )}
+              )} */}
 
               {/* Tasks */}
               <div className="space-y-3">
@@ -1350,7 +1535,7 @@ const SprintBoard = () => {
       </div>
 
       {/* Debug Panel - Shows actual API data for troubleshooting */}
-      <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+      {/* <div className="mt-6 p-4 bg-gray-100 rounded-lg">
         <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Sprint Data</h3>
         <div className="text-xs text-gray-600 bg-white p-2 rounded border">
           <div>Stories loaded: {tasks.length}</div>
@@ -1366,7 +1551,7 @@ const SprintBoard = () => {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

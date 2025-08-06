@@ -200,9 +200,9 @@ const SprintManager = () => {
     }
   };
 
-  const handleRefresh = () => {
-    fetchSprints();
-  };
+  // const handleRefresh = () => {
+  //   fetchSprints();
+  // };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -295,15 +295,15 @@ const SprintManager = () => {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-             <div className=" bg-gradient-to-r from-slate-50 to-indigo-600 rounded-lg flex items-center justify-center">
-                <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
-              </div>
+             {/* <div className=" bg-gradient-to-r from-slate-50 to-indigo-600 rounded-lg flex items-center justify-center"> */}
+                <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+              {/* </div> */}
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 SPRINT MANAGER
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <button 
+              {/* <button 
                 onClick={handleRefresh}
                 className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2 text-blue-700 border border-blue-200"
               >
@@ -311,7 +311,7 @@ const SprintManager = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <span>Refresh</span>
-              </button>
+              </button> */}
               <button 
                 onClick={() => navigate('/planning')}
                 className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-medium flex items-center space-x-2"
@@ -586,7 +586,7 @@ const SprintManager = () => {
         </div>
         
         {/* Action Buttons */}
-        <div className="mt-8 flex flex-wrap gap-4">
+        {/* <div className="mt-8 flex flex-wrap gap-4">
           <button className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-medium flex items-center space-x-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -605,7 +605,7 @@ const SprintManager = () => {
             </svg>
             <span>Delete Selected</span>
           </button>
-        </div>
+        </div> */}
         
         {/* Sprint Summary Cards */}
         {projectData && sprints.length > 0 && (
