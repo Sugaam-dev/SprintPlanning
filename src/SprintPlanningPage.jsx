@@ -326,13 +326,13 @@ Success Criteria:
              {/* <div className="w-100 h-10 bg-gradient-to-r from-slate-50 to-pink-600 rounded-lg flex items-center justify-center"> */}
               <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
             </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                SPRINT PLANNING PAGE
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-600 bg-clip-text text-transparent">
+                RELEASE PLANNING PAGE
               </h1>
             </div>
-            <div className="text-sm text-gray-600 font-medium">
+            {/* <div className="text-sm text-gray-600 font-medium">
               Project Planning
-            </div>
+            </div> */}
           </div>
         </div>
       </header>
@@ -627,7 +627,7 @@ Success Criteria:
             {/* Generate Stories Button */}
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-200/50 p-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -639,7 +639,7 @@ Success Criteria:
                 <button
                   onClick={handleGenerateStories}
                   disabled={isLoading}
-                  className={`group relative ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-700 hover:via-pink-700 hover:to-indigo-700 text-white font-bold px-8 py-4 rounded-xl shadow-xl transition-all duration-300 transform hover:scale-105`}
+                  className={`group relative ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-600 hover:from-indigo-700 hover:via-indigo-700 hover:to-indigo-700 text-white font-bold px-8 py-4 rounded-xl shadow-xl transition-all duration-300 transform hover:scale-105`}
                 >
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">
@@ -698,7 +698,7 @@ Success Criteria:
       </main>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-r from-gray-900 via-purple-900 to-indigo-900 text-white mt-12">
+      <footer className="bg-gradient-to-r from-indigo-900 via-indigo-900 to-indigo-900 text-white mt-12">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-4 mb-4">

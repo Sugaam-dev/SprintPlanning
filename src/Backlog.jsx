@@ -470,9 +470,9 @@ const Backlog = () => {
     return (
       <div 
         className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 ${
-          isSelected ? 'ring-2 ring-blue-500 border-blue-300' : ''
+          isSelected ? 'ring-2 ring-indigo-500 border-indigo-300' : ''
         } ${draggedItem?.id === item.id ? 'opacity-50' : ''} ${
-          item.movedFromSprint ? 'border-l-4 border-l-purple-500' : ''
+          item.movedFromSprint ? 'border-l-4 border-l-indigo-500' : ''
         }`}
         draggable
         onDragStart={(e) => handleDragStart(e, item)}
@@ -486,12 +486,12 @@ const Backlog = () => {
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => onSelect(item.id)}
-                className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
               />
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-2">
-                  <span className="text-sm font-medium text-blue-600">{item.id}</span>
+                  <span className="text-sm font-medium text-indigo-600">{item.id}</span>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(item.priority)}`}>
                     <Star className="w-3 h-3 mr-1" />
                     {item.priority}
@@ -519,7 +519,7 @@ const Backlog = () => {
                 {/* Metrics Row */}
                 <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
                   <div className="flex items-center">
-                    <BarChart3 className="w-4 h-4 mr-1 text-purple-500" />
+                    <BarChart3 className="w-4 h-4 mr-1 text-indigo-500" />
                     <span>{item.storyPoints} SP</span>
                   </div>
                   <div className="flex items-center">
@@ -542,7 +542,7 @@ const Backlog = () => {
                   )}
                    {item.originalSprintId && (
                                       <div className="flex items-center">
-                                        <Zap className="w-4 h-4 mr-1 text-purple-500" />
+                                        <Zap className="w-4 h-4 mr-1 text-indigo-500" />
                                         <span>Sprint {item.originalSprintId}</span>
                                       </div>
                                     )}
@@ -780,7 +780,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
               </div>
             )}
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -793,25 +793,25 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
               </button>
               <div className="border-l border-purple-300 pl-4">
                 <h1 className="text-4xl font-bold flex items-center">
-                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
-                    <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
-                  </div>
+                  {/* <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
+                    <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+                  {/* </div> */}
                   Product Backlog
                 </h1>
                 <p className="text-purple-100 mt-2 text-lg">Manage and prioritize your product requirements</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button 
+              {/* <button 
                 onClick={loadBacklogData}
                 className="px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors duration-200 font-medium flex items-center space-x-2"
               >
                 <RefreshCw className="w-5 h-5" />
                 <span>Refresh</span>
-              </button>
+              </button> */}
               <button 
                 onClick={handleGoToSprints}
-                className="px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors duration-200 font-medium flex items-center space-x-2"
+                className="px-6 py-3 bg-white text-indigo-600 rounded-lg hover:bg-purple-50 transition-colors duration-200 font-medium flex items-center space-x-2"
               >
                 <Zap className="w-5 h-5" />
                 <span>Sprint Planning</span>
@@ -844,8 +844,8 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
                {sprintMovedItems.length > 0 && (
                  <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                    <div className="flex items-center">
-                     <Zap className="w-5 h-5 text-purple-500 mr-2" />
-                     <span className="text-purple-700 text-sm font-medium">
+                     <Zap className="w-5 h-5 text-indigo-500 mr-2" />
+                     <span className="text-indigo-700 text-sm font-medium">
                        {sprintMovedItems.length} story{sprintMovedItems.length !== 1 ? 's' : ''} moved from sprint{sprintMovedItems.length !== 1 ? 's' : ''} to backlog
                      </span>
                    </div>
@@ -859,11 +859,11 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Stories</p>
-                <p className="text-3xl font-bold text-purple-600">{backlogItems.length}</p>
+                <p className="text-3xl font-bold text-indigo-600">{backlogItems.length}</p>
                 <p className="text-xs text-gray-500 mt-1">In backlog</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-purple-600" />
+                <BookOpen className="w-6 h-6 text-indigo-600" />
               </div>
             </div>
           </div>
@@ -872,13 +872,13 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Story Points</p>
-                <p className="text-3xl font-bold text-blue-600">
+                <p className="text-3xl font-bold text-indigo-600">
                   {backlogItems.reduce((sum, item) => sum + item.storyPoints, 0)}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Total effort</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
+                <BarChart3 className="w-6 h-6 text-indigo-600" />
               </div>
             </div>
           </div>
@@ -976,7 +976,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 >
                   <option value="priority">Sort by Priority</option>
                   <option value="storyPoints">Sort by Story Points</option>
@@ -996,7 +996,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
               {/* Action Buttons */}
               <button
                 onClick={() => setShowAddStoryModal(true)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Story</span>
@@ -1006,7 +1006,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-gray-600'
+                    viewMode === 'list' ? 'bg-purple-100 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="List View"
                 >
@@ -1015,7 +1015,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
                 <button
                   onClick={() => setViewMode('board')}
                   className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'board' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-gray-600'
+                    viewMode === 'board' ? 'bg-purple-100 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Board View"
                 >
@@ -1030,17 +1030,17 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
             <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm font-medium text-purple-700">
+                  <span className="text-sm font-medium text-indigo-700">
                     {selectedItems.length} items selected
                   </span>
                   <div className="flex items-center space-x-2">
-                    <button className="px-3 py-1 bg-white text-purple-600 rounded border border-purple-200 hover:bg-purple-50 transition-colors text-sm">
+                    <button className="px-3 py-1 bg-white text-indigo-600 rounded border border-indigo-200 hover:bg-indigo-50 transition-colors text-sm">
                       Move to Sprint
                     </button>
-                    <button className="px-3 py-1 bg-white text-purple-600 rounded border border-purple-200 hover:bg-purple-50 transition-colors text-sm">
+                    <button className="px-3 py-1 bg-white text-indigo-600 rounded border border-indigo-200 hover:bg-indigo-50 transition-colors text-sm">
                       Change Priority
                     </button>
-                    <button className="px-3 py-1 bg-white text-purple-600 rounded border border-purple-200 hover:bg-purple-50 transition-colors text-sm">
+                    <button className="px-3 py-1 bg-white text-indigo-600 rounded border border-indigo-200 hover:bg-indigo-50 transition-colors text-sm">
                       Archive
                     </button>
                     <button className="px-3 py-1 bg-white text-red-600 rounded border border-red-200 hover:bg-red-50 transition-colors text-sm">
@@ -1053,7 +1053,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
                     setSelectedItems([]);
                     setShowBulkActions(false);
                   }}
-                  className="text-purple-600 hover:text-purple-700"
+                  className="text-indigo-600 hover:text-indigo-700"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1075,12 +1075,12 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
             )}
             <button
               onClick={handleSelectAll}
-              className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
               {filteredItems.every(item => selectedItems.includes(item.id)) ? 'Deselect All' : 'Select All'}
             </button>
              {sprintMovedItems.length > 0 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                             <Zap className="w-3 h-3 mr-1" />
                             {sprintMovedItems.length} from sprints
                           </span>

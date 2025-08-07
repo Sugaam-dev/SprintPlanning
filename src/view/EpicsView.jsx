@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-
 import { useNavigate } from 'react-router-dom';
 import { 
   Layers, 
@@ -238,7 +237,7 @@ const EpicsView = () => {
 
   // Header Component
   const EpicsHeader = () => (
-    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
+    <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -251,23 +250,23 @@ const EpicsView = () => {
             </button>
             <div className="border-l border-indigo-300 pl-4">
              <h1 className="text-4xl font-bold flex items-center">
-  {/* <div className=" bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
-    <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
-  {/* </div> */}
-  Epic Management
-</h1>
+              {/* <div className=" bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
+                <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+              {/* </div> */}
+              Epic Management
+            </h1>
               <p className="text-indigo-100 mt-2 text-lg">Plan, track, and manage your project epics</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <button 
+            {/* <button 
               onClick={fetchEpicsData}
               className="px-6 py-3 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors duration-200 font-medium flex items-center space-x-2"
               // className="px-6 py-3 bg-black bg-opacity-20 backdrop-blur-sm rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2 text-white border border-white border-opacity-20"
             >
               <RefreshCw className="w-5 h-5" />
               <span>Refresh</span>
-            </button>
+            </button> */}
             <button 
               onClick={() => setShowAddForm(true)}
               className="px-6 py-3 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors duration-200 font-medium flex items-center space-x-2"
@@ -292,21 +291,21 @@ const EpicsView = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </div>
-  );
+              )}
+            </div>
+          </div>
+        );
 
-  // Footer Component
-  const EpicsFooter = () => (
-    <footer className="bg-gray-800 text-white mt-12">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-  <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10 mr-2" />
-  Epic Tools
-</h3>
+           // Footer Component
+              const EpicsFooter = () => (
+                <footer className="bg-gray-800 text-white mt-12">
+                  <div className="max-w-7xl mx-auto px-6 py-8">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10 mr-2" />
+              Epic Tools
+            </h3>
             <ul className="space-y-2 text-gray-300">
               <li><button onClick={() => navigate('/sprintmanager')} className="hover:text-white transition-colors">Sprint Manager</button></li>
               <li><button onClick={() => navigate('/projectview')} className="hover:text-white transition-colors">Project Overview</button></li>
@@ -873,7 +872,7 @@ const EpicsView = () => {
                         <>
                           <button
                             onClick={() => setSelectedEpic(epic)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
@@ -908,8 +907,8 @@ const EpicsView = () => {
                 {/* Epic Metrics */}
                 <div className="p-6">
                   <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{epicStories.length}</div>
+                    <div className="text-center p-3 bg-indigo-50 rounded-lg">
+                      <div className="text-2xl font-bold text-indigo-600">{epicStories.length}</div>
                       <div className="text-xs text-gray-500">Stories</div>
                     </div>
                     <div className="text-center p-3 bg-purple-50 rounded-lg">
@@ -1044,7 +1043,7 @@ const EpicsView = () => {
                       {epicStories.length > 0 && (
                         <div>
                           <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                            <BookOpen className="w-4 h-4 mr-2 text-indigo-500" />
+                            <BookOpen className="w-4 h-4 mr-2 text-blue-500" />
                             User Stories ({epicStories.length})
                           </h5>
                           <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1060,7 +1059,7 @@ const EpicsView = () => {
                               <div className="text-center py-2">
                                 <button
                                   onClick={() => setSelectedEpic(epic)}
-                                  className="text-xs text-indigo-600 hover:text-indigo-700"
+                                  className="text-xs text-blue-600 hover:text-blue-700"
                                 >
                                   View all {epicStories.length} stories
                                 </button>

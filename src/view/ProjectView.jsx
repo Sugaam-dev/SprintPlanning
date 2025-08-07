@@ -108,7 +108,7 @@ const ProjectView = () => {
 
   // Header Component
   const ProjectHeader = () => (
-    <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-lg">
+    <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -130,21 +130,21 @@ const ProjectView = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <button 
+            {/* <button 
               onClick={() => fetchProjectData()}
               className="px-6 py-3 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium flex items-center space-x-2"
               // className="px-6 py-3 bg-black bg-opacity-20 backdrop-blur-sm rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2 text-white border border-white border-opacity-20"
             >
               <RefreshCw className="w-5 h-5" />
               <span>Refresh</span>
-            </button>
-            <button 
+            </button> */}
+            {/* <button 
               onClick={() => navigate('/project/settings')}
               className="px-6 py-3 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium flex items-center space-x-2"
             >
               <Settings className="w-5 h-5" />
               <span>Settings</span>
-            </button>
+            </button> */}
           </div>
         </div>
         
@@ -224,7 +224,7 @@ const ProjectView = () => {
         <ProjectHeader />
         <div className="flex items-center justify-center min-h-64 py-20">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-gray-600 text-lg">Loading project data...</p>
           </div>
         </div>
@@ -283,7 +283,7 @@ const ProjectView = () => {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-500 rounded-xl flex items-center justify-center mr-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-500 rounded-xl flex items-center justify-center mr-4">
                   <Building className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -294,7 +294,7 @@ const ProjectView = () => {
               <p className="text-gray-700 text-lg leading-relaxed mb-4">{projectData.description}</p>
               <div className="flex items-center space-x-6 text-sm text-gray-600">
                 <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-green-500" />
+                  <Calendar className="w-4 h-4 mr-2 text-blue-500" />
                   <span>Started: {formatDate(projectData.start_date)}</span>
                 </div>
                 <div className="flex items-center">
@@ -305,7 +305,7 @@ const ProjectView = () => {
             </div>
             <div className="flex flex-col items-end space-y-2">
               <div className="text-right">
-                <div className="text-2xl font-bold text-green-600">{getProjectProgress()}%</div>
+                <div className="text-2xl font-bold text-blue-600">{getProjectProgress()}%</div>
                 <div className="text-sm text-gray-500">Complete</div>
               </div>
               <div className="w-20 h-20">
@@ -571,13 +571,13 @@ const ProjectView = () => {
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-green-600" />
+                  <Users className="w-5 h-5 mr-2 text-indigo-600" />
                   Team Resources
                 </h3>
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2">
+                {/* <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2">
                   <Plus className="w-4 h-4" />
                   <span>Add Member</span>
-                </button>
+                </button> */}
               </div>
             </div>
             
