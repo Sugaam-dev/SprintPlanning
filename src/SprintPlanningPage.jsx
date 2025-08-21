@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import pmrgLogo from '../src/assets/pmrglogo.png';
-// import API_ENDPOINTS from './components/apis/Auths';
+import API_ENDPOINTS from './Auths';
+
 const SprintPlanningPage = () => {
   const navigate = useNavigate();
   const [productScope, setProductScope] = useState('');
@@ -263,8 +264,8 @@ Success Criteria:
       }
 
       // Call the API
-      const response = await fetch('https://sprint-backend-73ho.onrender.com/process-sprint', {
-      // const response = await fetch(API_ENDPOINTS.PROCESS_SPRINT, {
+      // const response = await fetch('https://sprint-backend-73ho.onrender.com/process-sprint', {
+      const response = await fetch(API_ENDPOINTS.PROCESS_SPRINT, {
             method: 'POST',
             body: formData,
         //  const response = await fetch(' http://127.0.0.1:8000/process-sprint', {

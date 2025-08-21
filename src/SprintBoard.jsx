@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User, MoreVertical, MessageCircle } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
+import API_ENDPOINTS from './Auths';
 // import API_ENDPOINTS from './components/apis/Auths';
 // Utility functions for localStorage management
 const getBacklogItems = () => {
@@ -813,8 +814,8 @@ const [notification, setNotification] = useState(null);
 
       // Fetch specific sprint stories from API
       // const response = await fetch(`http://127.0.0.1:8000/stories/${sprintInfo.id}`, {
-        // const response = await fetch(API_ENDPOINTS.GET_SPRINT_STORIES(sprintInfo.id), {
-         const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
+        const response = await fetch(API_ENDPOINTS.GET_SPRINT_STORIES(sprintInfo.id), {
+        //  const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

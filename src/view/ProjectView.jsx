@@ -28,6 +28,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import pmrgLogo from '../assets/pmrglogo.png';
+import API_ENDPOINTS from '../Auths';
 // import API_ENDPOINTS from '../components/apis/Auths';
 const ProjectView = () => {
   const navigate = useNavigate();
@@ -44,8 +45,8 @@ const ProjectView = () => {
       setIsLoading(true);
       setError(null);
       // const response = await fetch('http://127.0.0.1:8000/sprints', {
-      const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
-      // const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
+      // const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
+      const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
      
         method: 'GET',
         headers: {
