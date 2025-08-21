@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import pmrgLogo from '../src/assets/pmrglogo.png';
-import API_ENDPOINTS from './components/apis/Auths';
+import API_ENDPOINTS from './components/apis/Auths.jsx';
 const SprintPlanningPage = () => {
   const navigate = useNavigate();
   const [productScope, setProductScope] = useState('');
