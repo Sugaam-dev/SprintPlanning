@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MoreVertical, Eye, Edit, Trash2, Play, Pause, Archive } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
-import API_ENDPOINTS from './components/apis/Auths';
+// import API_ENDPOINTS from './components/apis/Auths';
 const SprintManager = () => {
   const navigate = useNavigate();
   const [sprints, setSprints] = useState([]);
@@ -21,9 +21,9 @@ const SprintManager = () => {
     try {
       setIsLoading(true);
       setError(null);
-      // const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
+      const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
       // const response = await fetch('http://127.0.0.1:8000/sprints', {
-      const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
+      // const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
