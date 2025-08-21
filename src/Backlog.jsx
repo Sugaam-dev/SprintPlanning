@@ -780,7 +780,7 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
               </div>
             )}
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -794,9 +794,12 @@ const sprintMovedItems = backlogItems.filter(item => item.movedFromSprint);
               <div className="border-l border-purple-300 pl-4">
                 <h1 className="text-4xl font-bold flex items-center">
                   {/* <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
-                    <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+                    <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
                   {/* </div> */}
+                  <div className=' ml-10' >
+                  <br></br>
                   Product Backlog
+                  </div>
                 </h1>
                 <p className="text-purple-100 mt-2 text-lg">Manage and prioritize your product requirements</p>
               </div>

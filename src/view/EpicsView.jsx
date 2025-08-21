@@ -35,6 +35,7 @@ import {
   Globe
 } from 'lucide-react';
 import pmrgLogo from '../assets/pmrglogo.png';
+import API_ENDPOINTS from '../components/apis/Auths';
 const EpicsView = () => {
   const navigate = useNavigate();
   const [projectData, setProjectData] = useState(null);
@@ -62,7 +63,8 @@ const EpicsView = () => {
       setIsLoading(true);
       setError(null);
       // const response = await fetch('http://127.0.0.1:8000/sprints', {
-      const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
+      // const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
+      const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
         
         method: 'GET',
         headers: {
@@ -237,7 +239,7 @@ const EpicsView = () => {
 
   // Header Component
   const EpicsHeader = () => (
-    <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
+    <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -251,9 +253,12 @@ const EpicsView = () => {
             <div className="border-l border-indigo-300 pl-4">
              <h1 className="text-4xl font-bold flex items-center">
               {/* <div className=" bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
-                <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+                <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
               {/* </div> */}
+              <div className=' ml-10' >
+                    <br></br>
               Epic Management
+              </div>
             </h1>
               <p className="text-indigo-100 mt-2 text-lg">Plan, track, and manage your project epics</p>
             </div>
@@ -1132,3 +1137,4 @@ const EpicsView = () => {
 };
 
 export default EpicsView;
+

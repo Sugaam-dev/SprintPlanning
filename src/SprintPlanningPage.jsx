@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import pmrgLogo from '../src/assets/pmrglogo.png';
+import API_ENDPOINTS from './components/apis/Auths';
 const SprintPlanningPage = () => {
   const navigate = useNavigate();
   const [productScope, setProductScope] = useState('');
@@ -262,11 +263,14 @@ Success Criteria:
       }
 
       // Call the API
-      const response = await fetch('https://sprint-backend-73ho.onrender.com/process-sprint', {
+      // const response = await fetch('https://sprint-backend-73ho.onrender.com/process-sprint', {
+      const response = await fetch(API_ENDPOINTS.PROCESS_SPRINT, {
+            method: 'POST',
+            body: formData,
         //  const response = await fetch(' http://127.0.0.1:8000/process-sprint', {
        
-        method: 'POST',
-        body: formData,
+        // method: 'POST',
+        // body: formData,
       });
 
       if (!response.ok) {
@@ -324,9 +328,10 @@ Success Criteria:
             <div className="flex items-center space-x-4">
             <div className=" from-slate-50 to-pink-600 rounded-lg flex items-center justify-center">
              {/* <div className="w-100 h-10 bg-gradient-to-r from-slate-50 to-pink-600 rounded-lg flex items-center justify-center"> */}
-              <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10" />
+              <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
             </div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-600 bg-clip-text text-transparent">
+                <br></br>
                 RELEASE PLANNING PAGE
               </h1>
             </div>

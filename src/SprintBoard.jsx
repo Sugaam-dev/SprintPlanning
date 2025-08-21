@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Clock, Calendar, CheckCircle, ArrowLeft, Edit2, Save, X, ChevronDown, Upload, Image, FileText, AlertTriangle, Tag, Star, Target, BarChart, User, MoreVertical, MessageCircle } from 'lucide-react';
 import pmrgLogo from '../src/assets/pmrglogo.png';
+import API_ENDPOINTS from './components/apis/Auths';
 // Utility functions for localStorage management
 const getBacklogItems = () => {
   const items = localStorage.getItem('backlogItems');
@@ -425,7 +426,7 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
@@ -812,7 +813,8 @@ const [notification, setNotification] = useState(null);
 
       // Fetch specific sprint stories from API
       // const response = await fetch(`http://127.0.0.1:8000/stories/${sprintInfo.id}`, {
-         const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
+        const response = await fetch(API_ENDPOINTS.GET_SPRINT_STORIES(sprintInfo.id), {
+        //  const response = await fetch(`https://sprint-backend-73ho.onrender.com/stories/${sprintInfo.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1324,10 +1326,10 @@ const removeTaskFromSprint = (taskId) => {
       )}
 
       {/* Sprint Header */}
-      <div className="bg-white rounded-lg shadow-sm border-2 border-orange-400 mb-6 p-4">
+      <div className="bg-white rounded-lg shadow-sm border-2 border-orange-400 mb-6 p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           {/* <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center"> */}
-            <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
+            <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
           {/* </div> */}
           <div>
             <h1 className="text-xl font-bold text-orange-600 mb-1">

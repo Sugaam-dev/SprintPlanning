@@ -21,9 +21,10 @@ const HomePage = () => {
                 <img 
                   src={pmrgLogo} 
                   alt="PMRG Solution Logo" 
-                  className="h-10 w-auto"
+                  className="h-30 w-auto"
                 />
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <br></br>
                   PMRG SOLUTION
                 </h1>
               </div>
