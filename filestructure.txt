@@ -1,0 +1,28 @@
+|-- .gitignore
+|-- eslint.config.js
+|-- index.html
+|-- package-lock.json
+|-- package.json
+|-- public
+    |-- vite.svg
+|-- README.md
+|-- src
+    |-- App.css
+    |-- App.jsx
+    |-- assets
+        |-- pmrglogo.png
+        |-- react.svg
+    |-- Auths.jsx
+    |-- Backlog.jsx
+    |-- EpicManager.jsx
+    |-- HomePage.jsx
+    |-- index.css
+    |-- main.jsx
+    |-- SprintBoard.jsx
+    |-- SprintManager.jsx
+    |-- SprintPlanningPage.jsx
+    |-- view
+        |-- EpicsView.jsx
+        |-- ProjectView.jsx
+|-- versel.json
+|-- vite.config.js
