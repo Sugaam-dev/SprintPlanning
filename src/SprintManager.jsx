@@ -107,6 +107,15 @@ const SprintManager = () => {
       const firstProjectKey = projectKeys[0];
 
       const projectData = data[firstProjectKey].project_plan;
+      console.log(
+  'PROJECT RESOURCES:',
+  projectData.resources
+);
+
+console.log(
+  'RESOURCE COUNT:',
+  projectData.resources?.length
+);
 
       setProjectData(projectData);
       localStorage.setItem(
@@ -326,60 +335,112 @@ const SprintManager = () => {
         );
 
         const storiesData = {
-          assigned_stories: sprintStories.map((story) => ({
-            story_id: story.story_id,
 
-            epic_id: story.epic_id,
+  assigned_stories: sprintStories.map((story) => {
 
-            title: story.name || 'Untitled Story',
+    // ============================================
+    // SPRINT STATUS → BOARD STATUS
+    // ============================================
 
-            description: story.description || '',
+    let updatedStatus = 'To Do';
 
-            story_points: story.story_points || 0,
+    if (sprint.status === 'Completed') {
 
-            estimated_effort_hours:
-              story.estimated_effort_hours || 0,
+      updatedStatus = 'Done';
 
-            status: story.status || 'To Do',
+    } else if (
+      sprint.status === 'In Progress'
+    ) {
 
-            priority: story.priority || 'Medium',
+      updatedStatus = 'In Progress';
 
-            assigned_to:
-              projectData.resources?.find(
-                (r) =>
-                  r.resource_id ===
-                  story.assigned_to_resource_id
-              )?.name || 'Unassigned',
+    } else if (
+      sprint.status === 'Blocked'
+    ) {
 
-            dependencies: story.dependencies || [],
+      updatedStatus = 'Blocked';
 
-            start_date: sprint.startDate,
+    } else if (
+      sprint.status === 'Paused'
+    ) {
 
-            end_date: sprint.endDate,
+      updatedStatus = 'Blocked';
 
-            due_date: sprint.endDate,
+    } else {
 
-            work_hours: `${
-              story.estimated_effort_hours || 0
-            }h`,
+      updatedStatus = 'To Do';
+    }
 
-            duration: `${Math.ceil(
-              (story.estimated_effort_hours || 0) / 8
-            )}d`,
+    return {
 
-            role:
-              projectData.resources?.find(
-                (r) =>
-                  r.resource_id ===
-                  story.assigned_to_resource_id
-              )?.role || 'Developer',
-          })),
+      story_id: story.story_id,
 
-          backlog_stories: [],
+      epic_id: story.epic_id,
 
-          resources: projectData.resources || [],
-        };
+      title: story.name || 'Untitled Story',
 
+      description:
+        story.description || '',
+
+      story_points:
+        story.story_points || 0,
+
+      estimated_effort_hours:
+        story.estimated_effort_hours || 0,
+
+      // ============================================
+      // UPDATED STATUS
+      // ============================================
+
+      status: updatedStatus,
+
+      priority:
+        story.priority || 'Medium',
+
+      assigned_to:
+        projectData.resources?.find(
+          (r) =>
+            r.resource_id ===
+            story.assigned_to_resource_id
+        )?.name || 'Unassigned',
+
+      dependencies:
+        story.dependencies || [],
+
+      start_date:
+        sprint.startDate,
+
+      end_date:
+        sprint.endDate,
+
+      due_date:
+        sprint.endDate,
+
+      work_hours: `${
+        story.estimated_effort_hours || 0
+      }h`,
+
+      duration: `${Math.ceil(
+        (
+          story.estimated_effort_hours || 0
+        ) / 8
+      )}d`,
+
+      role:
+        projectData.resources?.find(
+          (r) =>
+            r.resource_id ===
+            story.assigned_to_resource_id
+        )?.role || 'Developer',
+    };
+
+  }),
+
+  backlog_stories: [],
+
+  resources:
+    projectData.resources || [],
+};
         console.log(
           `Stories data for ${sprint.name}:`,
           storiesData
@@ -398,14 +459,19 @@ const SprintManager = () => {
       //   JSON.stringify(updatedSprints)
       // );
 
-        localStorage.setItem(
-          'selectedSprintInfo',
-          JSON.stringify({
-            ...sprint,
-            start: sprint.startDate,
-            endDate: sprint.endDate,
-          })
-        );
+       const latestSprintData =
+  sprints.find(
+    (s) => s.id === sprint.id
+  ) || sprint;
+
+localStorage.setItem(
+  'selectedSprintInfo',
+  JSON.stringify({
+    ...latestSprintData,
+    start: latestSprintData.startDate,
+    endDate: latestSprintData.endDate,
+  })
+);
         localStorage.setItem(
           'selectedSprintName',
           sprint.name

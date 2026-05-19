@@ -301,12 +301,12 @@ const ProjectView = () => {
               <p className="text-gray-700 text-lg leading-relaxed mb-4">{projectData.description}</p>
               <div className="flex items-center space-x-6 text-sm text-gray-600">
                 <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-                  <span>Started: {formatDate(projectData.start_date)}</span>
+                  {/* <Calendar className="w-4 h-4 mr-2 text-blue-500" /> */}
+                  {/* <span>Started: {formatDate(projectData.start_date)}</span> */}
                 </div>
                 <div className="flex items-center">
-                  <Target className="w-4 h-4 mr-2 text-red-500" />
-                  <span>Due: {formatDate(projectData.end_date)}</span>
+                  {/* <Target className="w-4 h-4 mr-2 text-red-500" /> */}
+                  {/* <span>Due: {formatDate(projectData.end_date)}</span> */}
                 </div>
               </div>
             </div>
@@ -510,18 +510,18 @@ const ProjectView = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Project Timeline</label>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Start Date:</span>
-                        <span className="text-sm font-medium text-gray-900">{formatDate(projectData.start_date)}</span>
+                        {/* <span className="text-sm text-gray-600">Start Date:</span> */}
+                        {/* <span className="text-sm font-medium text-gray-900">{formatDate(projectData.start_date)}</span> */}
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">End Date:</span>
-                        <span className="text-sm font-medium text-gray-900">{formatDate(projectData.end_date)}</span>
+                        {/* <span className="text-sm text-gray-600">End Date:</span> */}
+                        {/* <span className="text-sm font-medium text-gray-900">{formatDate(projectData.end_date)}</span> */}
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Duration:</span>
-                        <span className="text-sm font-medium text-gray-900">
+                        {/* <span className="text-sm text-gray-600">Duration:</span> */}
+                        {/* <span className="text-sm font-medium text-gray-900">
                           {Math.ceil((new Date(projectData.end_date) - new Date(projectData.start_date)) / (1000 * 60 * 60 * 24))} days
-                        </span>
+                        </span> */}
                       </div>
                     </div>
                   </div>

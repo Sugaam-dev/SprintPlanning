@@ -235,7 +235,15 @@ Success Criteria:
         role: r.skills || 'Developer',
         skills: r.skills ? r.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0) : []
       }));
-      
+      console.log(
+  'TOTAL RESOURCES:',
+  resourcesData.length
+);
+
+console.log(
+  'RESOURCES DATA:',
+  resourcesData
+);
       // Send resources as JSON string
       formData.append('resources', JSON.stringify(resourcesData));
 
