@@ -438,6 +438,9 @@ const TaskDetail = ({ task, onBack, onUpdateTask, sprintData }) => {
               Back to Board
             </button>
             <div className="border-l border-gray-300 pl-4">
+              <div className="text-sm font-semibold text-orange-600 mb-1">
+                {sprintData.title}
+              </div>
               <h1 className="text-xl font-bold text-gray-800 flex items-center">
                 <span className="text-blue-600 mr-2">#{task.id}</span>
                 {task.title}
@@ -805,6 +808,10 @@ const [notification, setNotification] = useState(null);
       // Get sprint info from localStorage (from SprintManager)
       const selectedSprintInfo = localStorage.getItem('selectedSprintInfo');
       const sprintInfo = selectedSprintInfo ? JSON.parse(selectedSprintInfo) : null;
+      const sprintName =
+  localStorage.getItem(
+    'selectedSprintName'
+  );
 
       if (!sprintInfo) {
         throw new Error('No sprint selected. Please select a sprint from Sprint Manager.');
@@ -833,7 +840,12 @@ const [notification, setNotification] = useState(null);
       if (data.sprint_info) {
         setSprintData({
           title: `${data.sprint_info.name} (Current)`,
-          duration: `${data.sprint_info.start_date} - ${data.sprint_info.end_date}`,
+          // duration: `${data.sprint_info.start_date} - ${data.sprint_info.end_date}`,
+          duration: `${
+  sprintInfo.startDate || '--'
+} - ${
+  sprintInfo.endDate || '--'
+}`,
           columns: [
             { name: "To Do", complete: 0, color: "bg-orange-100" },
             { name: "In Progress", complete: 50, color: "bg-blue-100" },
@@ -1333,8 +1345,12 @@ const removeTaskFromSprint = (taskId) => {
             <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
           {/* </div> */}
           <div>
-            <h1 className="text-xl font-bold text-orange-600 mb-1">
-              {sprintData.title}
+          <div className="text-sm font-semibold text-gray-500 mb-1">
+            {sprintData.title}
+          </div>
+            
+             <h1 className="text-xl font-bold text-orange-600 mb-1">
+              Current Sprint
             </h1>
             <p className="text-gray-600 text-sm">{sprintData.duration}</p>
           </div>
