@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Calendar, Clock, Users, BarChart3,
-  BookOpen, Zap, Trophy, AlertTriangle, RefreshCw,
+  BookOpen, Zap, Trophy, AlertTriangle, AlertCircle, RefreshCw,
   Activity, TrendingUp, CheckCircle, Building,
   Target, Timer, User, Layers, Flag, GitBranch,
   Circle, Play, Pause, ChevronDown, ChevronUp, Award
@@ -41,10 +41,20 @@ const EPIC_COLORS = [
 ];
 
 const SPRINT_STATUS = {
-  'Completed':   { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle },
-  'In Progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',   icon: Play        },
-  'Paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',  icon: Pause       },
-  'Not Started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',  icon: Circle      },
+  'Completed':   { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Completed'   },
+  'Done':        { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Done'        },
+  'done':        { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Done'        },
+  'In Progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',    icon: Play,        label: 'In Progress' },
+  'in progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',    icon: Play,        label: 'In Progress' },
+  'Paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',   icon: Pause,       label: 'Paused'      },
+  'paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',   icon: Pause,       label: 'Paused'      },
+  'Blocked':     { bar: 'bg-red-500',     light: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-300',     icon: AlertCircle, label: 'Blocked'     },
+  'blocked':     { bar: 'bg-red-500',     light: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-300',     icon: AlertCircle, label: 'Blocked'     },
+  'To Do':       { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
+  'to do':       { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
+  'todo':        { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
+  'Not Started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'Not Started' },
+  'not started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'Not Started' },
 };
 
 const ProgressBar = ({ pct, color = 'bg-indigo-500', height = 'h-2.5' }) => (
@@ -192,6 +202,12 @@ const ProjectView = () => {
   // ── Overall ──
   const overallPct = Math.round((sprintPct * 0.55) + (storyPct * 0.45));
 
+  // ── Dynamic project dates ──
+  const validStarts = sprints.map(s => s.start_date).filter(Boolean);
+  const validEnds = sprints.map(s => s.end_date).filter(Boolean);
+  const projectStartDate = validStarts.length > 0 ? validStarts.reduce((min, d) => d < min ? d : min, validStarts[0]) : plan.start_date;
+  const projectEndDate = validEnds.length > 0 ? validEnds.reduce((max, d) => d > max ? d : max, validEnds[0]) : plan.end_date;
+
   // ── Epic-stories map ──
   const epicMap = {};
   epics.forEach(e => {
@@ -253,10 +269,10 @@ const ProjectView = () => {
                     {projectMeta.status}
                   </span>
                 )}
-                {(plan.start_date || plan.end_date) && (
+                {(projectStartDate || projectEndDate) && (
                   <span className="flex items-center gap-1 text-xs text-indigo-300 bg-white/10 px-2.5 py-1 rounded-full">
                     <Calendar className="w-3 h-3" />
-                    {fmt(plan.start_date)} → {fmt(plan.end_date)}
+                    {fmt(projectStartDate)} → {fmt(projectEndDate)}
                   </span>
                 )}
               </div>

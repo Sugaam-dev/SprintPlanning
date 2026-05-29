@@ -359,36 +359,37 @@ const SprintManager = () => {
   assigned_stories: sprintStories.map((story) => {
 
     // ============================================
-    // SPRINT STATUS → BOARD STATUS
+    // STORY STATUS / SPRINT STATUS → BOARD STATUS
     // ============================================
 
     let updatedStatus = 'To Do';
+    const validColumns = ['To Do', 'In Progress', 'Blocked', 'Done'];
 
-    if (sprint.status === 'Completed') {
-
-      updatedStatus = 'Done';
-
-    } else if (
-      sprint.status === 'In Progress'
-    ) {
-
-      updatedStatus = 'In Progress';
-
-    } else if (
-      sprint.status === 'Blocked'
-    ) {
-
-      updatedStatus = 'Blocked';
-
-    } else if (
-      sprint.status === 'Paused'
-    ) {
-
-      updatedStatus = 'Blocked';
-
+    if (story.status) {
+      const matchedCol = validColumns.find(
+        (col) => col.toLowerCase() === story.status.toLowerCase()
+      );
+      if (matchedCol) {
+        updatedStatus = matchedCol;
+      } else {
+        if (story.status.toLowerCase() === 'completed' || story.status.toLowerCase() === 'complete') {
+          updatedStatus = 'Done';
+        } else if (story.status.toLowerCase() === 'todo' || story.status.toLowerCase() === 'not started') {
+          updatedStatus = 'To Do';
+        } else if (story.status.toLowerCase() === 'paused') {
+          updatedStatus = 'Blocked';
+        }
+      }
     } else {
-
-      updatedStatus = 'To Do';
+      if (sprint.status === 'Completed') {
+        updatedStatus = 'Done';
+      } else if (sprint.status === 'In Progress') {
+        updatedStatus = 'In Progress';
+      } else if (sprint.status === 'Blocked' || sprint.status === 'Paused') {
+        updatedStatus = 'Blocked';
+      } else {
+        updatedStatus = 'To Do';
+      }
     }
 
     return {

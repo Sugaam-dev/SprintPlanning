@@ -1008,32 +1008,35 @@ if (data.stories && Array.isArray(data.stories)) {
   data.stories.forEach((story) => {
 
     // ============================================
-    // SPRINT STATUS → BOARD STATUS
+    // STORY STATUS / SPRINT STATUS → BOARD STATUS
     // ============================================
 
     let sprintBoardStatus = "To Do";
+    const validColumns = ["To Do", "In Progress", "Blocked", "Done"];
 
-    if (sprintInfo.status === "Completed") {
-
-      sprintBoardStatus = "Done";
-
-    } else if (
-      sprintInfo.status === "In Progress"
-    ) {
-
-      sprintBoardStatus = "In Progress";
-
-    } else if (
-      sprintInfo.status === "Blocked"
-    ) {
-
-      sprintBoardStatus = "Blocked";
-
-    } else if (
-      sprintInfo.status === "Paused"
-    ) {
-
-      sprintBoardStatus = "Blocked";
+    if (story.status) {
+      const matchedCol = validColumns.find(
+        (col) => col.toLowerCase() === story.status.toLowerCase()
+      );
+      if (matchedCol) {
+        sprintBoardStatus = matchedCol;
+      } else {
+        if (story.status.toLowerCase() === "completed" || story.status.toLowerCase() === "complete") {
+          sprintBoardStatus = "Done";
+        } else if (story.status.toLowerCase() === "todo" || story.status.toLowerCase() === "not started") {
+          sprintBoardStatus = "To Do";
+        } else if (story.status.toLowerCase() === "paused") {
+          sprintBoardStatus = "Blocked";
+        }
+      }
+    } else {
+      if (sprintInfo.status === "Completed") {
+        sprintBoardStatus = "Done";
+      } else if (sprintInfo.status === "In Progress") {
+        sprintBoardStatus = "In Progress";
+      } else if (sprintInfo.status === "Blocked" || sprintInfo.status === "Paused") {
+        sprintBoardStatus = "Blocked";
+      }
     }
 
     // ============================================
@@ -1155,7 +1158,16 @@ if (data.stories && Array.isArray(data.stories)) {
     setDraggedTask(null);
   };
 
-  const updateTaskField = (taskId, field, value) => {
+  const updateTaskField = async (taskId, field, value) => {
+    // Find target task to get its actual database story_id
+    const targetTask = tasks.find((t) => t.id === taskId);
+    if (!targetTask) return;
+
+    let newStatus = value;
+    if (field === "column") {
+      newStatus = value === "Done" ? "Done" : value;
+    }
+
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         const updatedTask = { ...task, [field]: value };
@@ -1176,6 +1188,132 @@ if (data.stories && Array.isArray(data.stories)) {
       return task;
     });
     setTasks(updatedTasks);
+
+    // If status or column is updated, persist to backend
+    if ((field === "column" || field === "status") && targetTask.story_id) {
+      const projectId = localStorage.getItem('activeProjectId');
+      if (projectId) {
+        try {
+          const url = API_ENDPOINTS.UPDATE_STORY_STATUS(projectId, targetTask.story_id);
+          const response = await fetch(url, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to update story status in database:', response.statusText);
+          } else {
+            console.log(`Successfully updated story ${targetTask.story_id} status to ${newStatus} in database`);
+
+            // Also keep projectData and selectedSprintData inside localStorage in sync!
+            const projectDataStr = localStorage.getItem('projectData');
+            if (projectDataStr) {
+              try {
+                const projectDataObj = JSON.parse(projectDataStr);
+                if (projectDataObj.user_stories) {
+                  projectDataObj.user_stories = projectDataObj.user_stories.map((story) => {
+                    if (story.story_id === targetTask.story_id) {
+                      return { ...story, status: newStatus };
+                    }
+                    return story;
+                  });
+                  localStorage.setItem('projectData', JSON.stringify(projectDataObj));
+                }
+              } catch (e) {
+                console.error('Error updating projectData in localStorage:', e);
+              }
+            }
+
+            const selectedSprintDataStr = localStorage.getItem('selectedSprintData');
+            if (selectedSprintDataStr) {
+              try {
+                const selectedSprintDataObj = JSON.parse(selectedSprintDataStr);
+                if (selectedSprintDataObj.assigned_stories) {
+                  selectedSprintDataObj.assigned_stories = selectedSprintDataObj.assigned_stories.map((story) => {
+                    if (story.story_id === targetTask.story_id) {
+                      return { ...story, status: newStatus };
+                    }
+                    return story;
+                  });
+                  localStorage.setItem('selectedSprintData', JSON.stringify(selectedSprintDataObj));
+                }
+              } catch (e) {
+                console.error('Error updating selectedSprintData in localStorage:', e);
+              }
+            }
+
+            // Automatically complete/revert active sprint based on whether all stories are done
+            const allStoriesDone = updatedTasks.length > 0 && updatedTasks.every(t => t.completed);
+            const selectedSprintInfoStr = localStorage.getItem('selectedSprintInfo');
+            if (selectedSprintInfoStr) {
+              try {
+                const sprintInfo = JSON.parse(selectedSprintInfoStr);
+                const currentSprintStatus = sprintInfo.status;
+                
+                let newSprintStatus = currentSprintStatus;
+                if (allStoriesDone && currentSprintStatus !== "Completed") {
+                  newSprintStatus = "Completed";
+                } else if (!allStoriesDone && currentSprintStatus === "Completed") {
+                  newSprintStatus = "In Progress";
+                }
+                
+                if (newSprintStatus !== currentSprintStatus) {
+                  // Persist updated sprint status to database
+                  const sprintUrl = API_ENDPOINTS.UPDATE_SPRINT_STATUS(projectId, sprintInfo.id);
+                  await fetch(sprintUrl, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      status:     newSprintStatus,
+                      start_date: sprintInfo.startDate || sprintInfo.start,
+                      end_date:   sprintInfo.endDate,
+                    }),
+                  });
+                  
+                  console.log(`Automatically updated sprint ${sprintInfo.id} status to ${newSprintStatus}`);
+                  
+                  // Sync local selectedSprintInfo
+                  sprintInfo.status = newSprintStatus;
+                  localStorage.setItem('selectedSprintInfo', JSON.stringify(sprintInfo));
+                  
+                  // Sync sprintManagerData in localStorage
+                  const sprintManagerDataStr = localStorage.getItem('sprintManagerData');
+                  if (sprintManagerDataStr) {
+                    const sprintManagerData = JSON.parse(sprintManagerDataStr);
+                    const updatedSprints = sprintManagerData.map(s => 
+                      s.id === sprintInfo.id ? { ...s, status: newSprintStatus } : s
+                    );
+                    localStorage.setItem('sprintManagerData', JSON.stringify(updatedSprints));
+                  }
+                  
+                  // Update top-level projectData sprints in localStorage to keep detailed list synced
+                  if (projectDataStr) {
+                    const projectDataObj = JSON.parse(projectDataStr);
+                    if (projectDataObj.sprints) {
+                      projectDataObj.sprints = projectDataObj.sprints.map(s => 
+                        s.sprint_id === sprintInfo.id ? { ...s, status: newSprintStatus } : s
+                      );
+                      localStorage.setItem('projectData', JSON.stringify(projectDataObj));
+                    }
+                  }
+
+                  // Update active board state title
+                  setSprintData(prev => ({
+                    ...prev,
+                    title: `${sprintInfo.name} (${newSprintStatus})`
+                  }));
+                }
+              } catch (e) {
+                console.error('Error auto-syncing sprint status:', e);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error calling update story status API:', err);
+        }
+      }
+    }
   };
 
   const handleTaskClick = (task) => {

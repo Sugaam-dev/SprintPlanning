@@ -51,10 +51,19 @@ const maxDate = (a, b) => {
 // ─── status config ───────────────────────────────────────────────────────────
 const STATUS = {
   'Completed':   { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Completed'   },
+  'Done':        { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Done'        },
+  'done':        { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle, label: 'Done'        },
   'In Progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',    icon: Play,        label: 'In Progress' },
+  'in progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',    icon: Play,        label: 'In Progress' },
   'Paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',   icon: Pause,       label: 'Paused'      },
+  'paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',   icon: Pause,       label: 'Paused'      },
   'Blocked':     { bar: 'bg-red-500',     light: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-300',     icon: AlertCircle, label: 'Blocked'     },
+  'blocked':     { bar: 'bg-red-500',     light: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-300',     icon: AlertCircle, label: 'Blocked'     },
+  'To Do':       { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
+  'to do':       { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
+  'todo':        { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'To Do'       },
   'Not Started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'Not Started' },
+  'not started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',   icon: Circle,      label: 'Not Started' },
 };
 
 const EPIC_COLORS = [
@@ -460,6 +469,12 @@ const ProjectDetailPage = () => {
     end_date:   localDates[s.sprint_id]?.end_date   || s.end_date,
   }));
 
+  // ── Dynamic project dates ──
+  const validStarts = enrichedSprints.map(s => s.start_date).filter(Boolean);
+  const validEnds = enrichedSprints.map(s => s.end_date).filter(Boolean);
+  const projectStartDate = validStarts.length > 0 ? validStarts.reduce((min, d) => d < min ? d : min, validStarts[0]) : plan.start_date;
+  const projectEndDate = validEnds.length > 0 ? validEnds.reduce((max, d) => d > max ? d : max, validEnds[0]) : plan.end_date;
+
   // Progress metrics
   const totalSprints    = sprints.length;
   const doneSprintCount = enrichedSprints.filter((s) => s.status === 'Completed').length;
@@ -549,10 +564,10 @@ const ProjectDetailPage = () => {
               <div className="flex items-center gap-3 mb-3 flex-wrap">
                 <img src={pmrgLogo} alt="PMRG" className="h-8 w-auto opacity-80" />
                 <StatusBadge status={project.status} />
-                {(plan.start_date || plan.end_date) && (
+                {(projectStartDate || projectEndDate) && (
                   <span className="flex items-center gap-1 text-xs text-indigo-300 bg-white/10 px-2.5 py-1 rounded-full">
                     <Calendar className="w-3 h-3" />
-                    {fmt(plan.start_date)} → {fmt(plan.end_date)}
+                    {fmt(projectStartDate)} → {fmt(projectEndDate)}
                   </span>
                 )}
               </div>

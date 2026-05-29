@@ -201,7 +201,9 @@ const EpicsView = () => {
     if (!projectData?.user_stories) return 0;
     const epicStories = projectData.user_stories.filter(story => story.epic_id === epic.epic_id);
     if (epicStories.length === 0) return 0;
-    const completedStories = epicStories.filter(story => story.status === 'Done');
+    const completedStories = epicStories.filter(story => 
+      ['done', 'completed'].includes((story.status || '').toLowerCase())
+    );
     return Math.round((completedStories.length / epicStories.length) * 100);
   };
 
@@ -213,12 +215,13 @@ const EpicsView = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'not-started': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    if (!status) return 'bg-gray-100 text-gray-800';
+    const s = status.toLowerCase();
+    if (s === 'completed' || s === 'done') return 'bg-green-100 text-green-800';
+    if (s === 'in-progress' || s === 'in progress' || s === 'active') return 'bg-blue-100 text-blue-800';
+    if (s === 'blocked') return 'bg-red-100 text-red-800';
+    if (s === 'paused') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const toggleCardExpansion = (epicId) => {
@@ -292,7 +295,7 @@ const EpicsView = () => {
                 <p className="text-black text-sm">{projectData.epics?.length || 0} epics • {projectData.user_stories?.length || 0} user stories</p>
               </div>
               <div className="text-right">
-                <div className="text-black text-sm">{Math.round((projectData.user_stories?.filter(s => s.status === 'Done').length / (projectData.user_stories?.length || 1)) * 100)}%</div>
+                <div className="text-black text-sm">{Math.round((projectData.user_stories?.filter(s => ['done', 'completed'].includes((s.status || '').toLowerCase())).length / (projectData.user_stories?.length || 1)) * 100)}%</div>
                 <div className="text-black text-sm">Overall Progress</div>
               </div>
             </div>
@@ -494,7 +497,7 @@ const EpicsView = () => {
   // Epic Detail Modal
   const EpicDetailModal = ({ epic, onClose }) => {
     const epicStories = projectData.user_stories?.filter(story => story.epic_id === epic.epic_id) || [];
-    const completedStories = epicStories.filter(story => story.status === 'Done');
+    const completedStories = epicStories.filter(story => ['done', 'completed'].includes((story.status || '').toLowerCase()));
     const totalStoryPoints = epicStories.reduce((sum, story) => sum + (story.story_points || 0), 0);
     const totalEffortHours = epicStories.reduce((sum, story) => sum + (story.estimated_effort_hours || 0), 0);
     const progressPercentage = getEpicProgress(epic);
@@ -760,7 +763,7 @@ const EpicsView = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Overall Progress</p>
                 <p className="text-3xl font-bold text-purple-600">
-                  {Math.round((projectData.user_stories?.filter(s => s.status === 'Done').length / (projectData.user_stories?.length || 1)) * 100)}%
+                  {Math.round((projectData.user_stories?.filter(s => ['done', 'completed'].includes((s.status || '').toLowerCase())).length / (projectData.user_stories?.length || 1)) * 100)}%
                 </p>
                 <p className="text-xs text-gray-500 mt-1">All stories</p>
               </div>
@@ -817,7 +820,7 @@ const EpicsView = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
           {filteredEpics.map((epic) => {
             const epicStories = projectData.user_stories?.filter(story => story.epic_id === epic.epic_id) || [];
-            const completedStories = epicStories.filter(story => story.status === 'Done');
+            const completedStories = epicStories.filter(story => ['done', 'completed'].includes((story.status || '').toLowerCase()));
             const totalStoryPoints = epicStories.reduce((sum, story) => sum + (story.story_points || 0), 0);
             const progressPercentage = getEpicProgress(epic);
             const isEditing = editingEpic?.epic_id === epic.epic_id;

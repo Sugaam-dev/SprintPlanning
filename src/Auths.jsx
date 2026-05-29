@@ -14,6 +14,8 @@ const API_ENDPOINTS = {
   UPDATE_PROJECT_STATUS:   (projectId) => `${API_BASE_URL}/projects/${projectId}/status`,
   UPDATE_SPRINT_STATUS:    (projectId, sprintId) =>
     `${API_BASE_URL}/projects/${projectId}/sprints/${sprintId}/status`,
+  UPDATE_STORY_STATUS:     (projectId, storyId) =>
+    `${API_BASE_URL}/projects/${projectId}/stories/${storyId}/status`,
 
   // ── Legacy ───────────────────────────────────────────
   GET_SPRINT_STORIES: (sprintId) => `${API_BASE_URL}/stories/${sprintId}`,
