@@ -142,8 +142,8 @@ const HomePage = () => {
 
         </div>
 
-        {/* Start Sprint Button */}
-        <div className="flex justify-center">
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             onClick={handleStartSprint}
             className="group relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white font-bold px-12 py-4 rounded-2xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-3xl"
@@ -168,7 +168,20 @@ const HomePage = () => {
             </div>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-40 transition-opacity -z-10"></div>
           </button>
+
+          <button
+            onClick={() => navigate('/projects')}
+            className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-700 font-bold px-10 py-4 rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+          >
+            <div className="flex items-center space-x-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <span className="text-lg">My Projects</span>
+            </div>
+          </button>
         </div>
+
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">

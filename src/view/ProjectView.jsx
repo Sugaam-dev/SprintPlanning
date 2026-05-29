@@ -1,665 +1,510 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar, 
-  Clock, 
-  Users, 
-  Target, 
-  BarChart3, 
-  FolderOpen, 
-  Database,
-  User,
-  Timer,
-  BookOpen,
-  Zap,
-  Trophy,
-  AlertTriangle,
-  RefreshCw,
-  Plus,
-  Settings,
-  Activity,
-  TrendingUp,
-  CheckCircle,
-  Star,
-  Building,
-  Mail,
-  Phone,
-  Globe,
-  ArrowLeft
+import {
+  ArrowLeft, Calendar, Clock, Users, BarChart3,
+  BookOpen, Zap, Trophy, AlertTriangle, RefreshCw,
+  Activity, TrendingUp, CheckCircle, Building,
+  Target, Timer, User, Layers, Flag, GitBranch,
+  Circle, Play, Pause, ChevronDown, ChevronUp, Award
 } from 'lucide-react';
 import pmrgLogo from '../assets/pmrglogo.png';
 import API_ENDPOINTS from '../Auths';
-// import API_ENDPOINTS from '../components/apis/Auths';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const fmt = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const isDone   = (s) => ['done','completed','complete','closed'].includes((s?.status || '').toLowerCase());
+const isActive = (s) => ['in progress','in-progress','active'].includes((s?.status || '').toLowerCase());
+
+const ROLE_GRADIENT = {
+  frontend:  'from-blue-400 to-indigo-500',
+  backend:   'from-green-400 to-emerald-500',
+  fullstack: 'from-violet-400 to-purple-500',
+  qa:        'from-amber-400 to-orange-500',
+  devops:    'from-sky-400 to-cyan-500',
+  designer:  'from-pink-400 to-rose-500',
+  manager:   'from-slate-500 to-gray-600',
+};
+const roleGrad = (role) => ROLE_GRADIENT[(role || '').toLowerCase()] || 'from-indigo-400 to-blue-500';
+const initials = (name = '') => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+const EPIC_COLORS = [
+  { gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50 border-violet-200', text: 'text-violet-700' },
+  { gradient: 'from-rose-500 to-pink-600',     light: 'bg-rose-50 border-rose-200',     text: 'text-rose-700'   },
+  { gradient: 'from-sky-500 to-blue-600',      light: 'bg-sky-50 border-sky-200',       text: 'text-sky-700'    },
+  { gradient: 'from-amber-500 to-orange-600',  light: 'bg-amber-50 border-amber-200',   text: 'text-amber-700'  },
+  { gradient: 'from-teal-500 to-emerald-600',  light: 'bg-teal-50 border-teal-200',     text: 'text-teal-700'   },
+];
+
+const SPRINT_STATUS = {
+  'Completed':   { bar: 'bg-emerald-500', light: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300', icon: CheckCircle },
+  'In Progress': { bar: 'bg-blue-500',    light: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300',   icon: Play        },
+  'Paused':      { bar: 'bg-amber-400',   light: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300',  icon: Pause       },
+  'Not Started': { bar: 'bg-slate-300',   light: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300',  icon: Circle      },
+};
+
+const ProgressBar = ({ pct, color = 'bg-indigo-500', height = 'h-2.5' }) => (
+  <div className={`w-full bg-gray-100 rounded-full ${height} overflow-hidden`}>
+    <div
+      className={`${height} ${color} rounded-full transition-all duration-700`}
+      style={{ width: `${Math.min(100, Math.max(0, pct || 0))}%` }}
+    />
+  </div>
+);
+
+const StatusBadge = ({ status }) => {
+  const cfg  = SPRINT_STATUS[status] || SPRINT_STATUS['Not Started'];
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold ${cfg.light} ${cfg.text} ${cfg.border}`}>
+      <Icon className="w-3 h-3" /> {status || 'Not Started'}
+    </span>
+  );
+};
+
+const StatCard = ({ icon: Icon, value, label, sub, gradient }) => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+    <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center shadow-md flex-shrink-0`}>
+      <Icon className="w-6 h-6 text-white" />
+    </div>
+    <div>
+      <p className="text-2xl font-bold text-gray-900 leading-none">{value ?? '—'}</p>
+      <p className="text-xs text-gray-500 mt-1">{label}</p>
+      {sub && <p className="text-xs text-indigo-500 font-medium mt-0.5">{sub}</p>}
+    </div>
+  </div>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const ProjectView = () => {
   const navigate = useNavigate();
-  const [projectData, setProjectData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchProjectData();
-  }, []);
+  const [projectData,  setProjectData]  = useState(null);
+  const [projectMeta,  setProjectMeta]  = useState(null); // DB-level fields: created_at, status, name
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [error,        setError]        = useState(null);
+  const [showAllStories, setShowAllStories] = useState(false);
+  const [activeEpicFilter, setActiveEpicFilter] = useState(null);
 
-  const fetchProjectData = async () => {
+  // ── Fetch project from API using activeProjectId ─────────────────────
+  const fetchProjectData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const projectId = localStorage.getItem('activeProjectId');
+
+    // Try cache first
+    const cached    = localStorage.getItem('projectData');
+    const cachedId  = localStorage.getItem('cachedProjectId');
+
+    if (cached && cachedId === projectId) {
+      try {
+        setProjectData(JSON.parse(cached));
+        setIsLoading(false);
+      } catch (_) {}
+    }
+
+    if (!projectId) {
+      setError('No active project. Go back to Projects.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      setIsLoading(true);
-      setError(null);
-      // const response = await fetch('http://127.0.0.1:8000/sprints', {
-      // const response = await fetch('https://sprint-backend-73ho.onrender.com/sprints', {
-      const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
-     
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const res  = await fetch(API_ENDPOINTS.GET_PROJECT(projectId));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Fetched projects data:', data);
-      
-      const projectKeys = Object.keys(data);
-      if (projectKeys.length === 0) {
-        throw new Error('No projects found in the API response');
-      }
-      
-      const firstProjectKey = projectKeys[0];
-      const projectData = data[firstProjectKey].project_plan;
-      
-      setProjectData(projectData);
-      
-    } catch (error) {
-      console.error('Error fetching project data:', error);
-      setError(error.message);
+      setProjectMeta(data);               // { project_id, name, status, created_at, ... }
+      setProjectData(data.project_plan);  // the nested plan
+      localStorage.setItem('projectData',     JSON.stringify(data.project_plan));
+      localStorage.setItem('cachedProjectId', projectId);
+    } catch (err) {
+      // If we have cached data fall back silently
+      if (!cached) setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
+  useEffect(() => { fetchProjectData(); }, [fetchProjectData]);
 
-  const getProjectProgress = () => {
-    if (!projectData?.user_stories) return 0;
-    const completedStories = projectData.user_stories.filter(story => story.status === 'Done').length;
-    return Math.round((completedStories / projectData.user_stories.length) * 100);
-  };
-
-  const getSprintProgress = () => {
-    if (!projectData?.sprints) return 0;
-    const today = new Date();
-    const completedSprints = projectData.sprints.filter(sprint => {
-      const endDate = new Date(sprint.end_date);
-      return today > endDate;
-    }).length;
-    return Math.round((completedSprints / projectData.sprints.length) * 100);
-  };
-
-  const handleBack = () => {
-    navigate('/sprintmanager');
-  };
-
-  // Header Component
-  const ProjectHeader = () => (
-    <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg sticky top-0 z-10">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleBack}
-              className="flex items-center text-white hover:text-green-100 transition-colors mr-4"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Sprint Manager
-            </button>
-            <div className="border-l border-green-300 pl-4">
-              <h1 className="text-4xl font-bold flex items-center">
-                {/* <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4"> */}
-                  <img src={pmrgLogo} alt="PMRG Logo" className="w-50 h-30" />
-                {/* </div> */}
-              
-                <div className=' ml-10' >
-                    <br></br>
-                Project Overview
-                </div>
-              </h1>
-              <p className="text-green-100 mt-2 text-lg">Comprehensive project insights and management</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            {/* <button 
-              onClick={() => fetchProjectData()}
-              className="px-6 py-3 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium flex items-center space-x-2"
-              // className="px-6 py-3 bg-black bg-opacity-20 backdrop-blur-sm rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2 text-white border border-white border-opacity-20"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span>Refresh</span>
-            </button> */}
-            {/* <button 
-              onClick={() => navigate('/project/settings')}
-              className="px-6 py-3 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium flex items-center space-x-2"
-            >
-              <Settings className="w-5 h-5" />
-              <span>Settings</span>
-            </button> */}
-          </div>
-        </div>
-        
-        {/* Project Progress Bar */}
-        {projectData && (
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-white">Project Progress</span>
-              <span className="text-sm text-green-100">{getProjectProgress()}% Complete</span>
-            </div>
-            <div className="w-full bg-white bg-opacity-20 rounded-full h-3">
-              <div 
-                className="bg-white h-3 rounded-full transition-all duration-500" 
-                style={{ width: `${getProjectProgress()}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Footer Component
-  const ProjectFooter = () => (
-    <footer className="bg-gray-800 text-white mt-12">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-           <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10 mr-2" />
-              Project Tools
-            </h3>
-            <ul className="space-y-2 text-gray-300">
-              <li><button onClick={() => navigate('/sprintmanager')} className="hover:text-white transition-colors">Sprint Manager</button></li>
-              <li><button onClick={() => navigate('/epicsview')} className="hover:text-white transition-colors">Epic Management</button></li>
-              <li><button onClick={() => navigate('/reports')} className="hover:text-white transition-colors">Analytics</button></li>
-              <li><button onClick={() => navigate('/timeline')} className="hover:text-white transition-colors">Project Timeline</button></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Team Resources</h3>
-            <ul className="space-y-2 text-gray-300">
-              <li><button className="hover:text-white transition-colors">Team Directory</button></li>
-              <li><button className="hover:text-white transition-colors">Skill Matrix</button></li>
-              <li><button className="hover:text-white transition-colors">Capacity Planning</button></li>
-              <li><button className="hover:text-white transition-colors">Performance</button></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Documentation</h3>
-            <ul className="space-y-2 text-gray-300">
-              <li><button className="hover:text-white transition-colors">Project Charter</button></li>
-              <li><button className="hover:text-white transition-colors">Requirements</button></li>
-              <li><button className="hover:text-white transition-colors">Architecture</button></li>
-              <li><button className="hover:text-white transition-colors">User Guides</button></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <div className="space-y-2 text-gray-300">
-              <div className="flex items-center"><Mail className="w-4 h-4 mr-2" /> pmrgsolution@company.com</div>
-              <div className="flex items-center"><Phone className="w-4 h-4 mr-2" /> +1 (555) 123-4567</div>
-              <div className="flex items-center"><Globe className="w-4 h-4 mr-2" /> help.company.com</div>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-700 pt-6 mt-8 text-center text-gray-400">
-          <p>&copy; 2025 Project Management System. Empowering teams to deliver excellence.</p>
-        </div>
-      </div>
-    </footer>
-  );
-
+  // ── Derived metrics ──────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <ProjectHeader />
-        <div className="flex items-center justify-center min-h-64 py-20">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600 text-lg">Loading project data...</p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/10 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-gray-500 font-medium">Loading project overview…</p>
         </div>
-        <ProjectFooter />
       </div>
     );
   }
 
-  if (!projectData) {
+  if (error && !projectData) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <ProjectHeader />
-        <div className="max-w-7xl mx-auto px-6 py-20">
-          <div className="text-center">
-            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">No Project Data Available</h2>
-            <p className="text-gray-600 mb-6">Unable to load project information. Please try again.</p>
-            <button 
-              onClick={fetchProjectData}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Retry Loading
-            </button>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <p className="text-gray-700 font-semibold mb-1">Could not load project</p>
+          <p className="text-gray-500 text-sm mb-4">{error}</p>
+          <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm mr-2">Projects</button>
+          <button onClick={fetchProjectData} className="px-4 py-2 border border-indigo-300 text-indigo-600 rounded-xl text-sm">Retry</button>
         </div>
-        <ProjectFooter />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <ProjectHeader />
+  const plan      = projectData || {};
+  const sprints   = plan.sprints     || [];
+  const stories   = plan.user_stories || [];
+  const epics     = plan.epics       || [];
+  const resources = plan.resources   || [];
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center">
-              <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">Error loading data: {error}</span>
-              <button 
-                onClick={fetchProjectData}
-                className="ml-4 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
-              >
-                Retry
-              </button>
+  // ── Story metrics ──
+  const totalStories = stories.length;
+  const doneStories  = stories.filter(isDone).length;
+  const activeStories = stories.filter(isActive).length;
+  const storyPct     = totalStories > 0 ? Math.round((doneStories / totalStories) * 100) : 0;
+
+  // ── Sprint metrics ── (use status field, not just dates)
+  const totalSprints   = sprints.length;
+  const doneSprintCount = sprints.filter(s => s.status === 'Completed').length;
+  const inProgCount     = sprints.filter(s => s.status === 'In Progress').length;
+  const notStartedCount = sprints.filter(s => !s.status || s.status === 'Not Started').length;
+  const sprintPct       = totalSprints > 0 ? Math.round((doneSprintCount / totalSprints) * 100) : 0;
+
+  // ── Points & Hours ──
+  const totalPts   = stories.reduce((s, st) => s + (st.story_points || 0), 0);
+  const donePts    = stories.filter(isDone).reduce((s, st) => s + (st.story_points || 0), 0);
+  const totalHours = stories.reduce((s, st) => s + (st.estimated_effort_hours || 0), 0);
+  const doneHours  = stories.filter(isDone).reduce((s, st) => s + (st.estimated_effort_hours || 0), 0);
+
+  // Plan-level fallbacks
+  const displayPts   = totalPts   || plan.total_estimated_story_points  || 0;
+  const displayHours = totalHours || plan.total_estimated_effort_hours  || 0;
+
+  // ── Overall ──
+  const overallPct = Math.round((sprintPct * 0.55) + (storyPct * 0.45));
+
+  // ── Epic-stories map ──
+  const epicMap = {};
+  epics.forEach(e => {
+    epicMap[e.epic_id] = stories.filter(s => s.epic_id === e.epic_id);
+  });
+
+  // ── Filtered stories ──
+  const filteredStories = activeEpicFilter
+    ? stories.filter(s => s.epic_id === activeEpicFilter)
+    : stories;
+  const displayedStories = showAllStories ? filteredStories : filteredStories.slice(0, 12);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/10">
+
+      {/* ── Sticky Header ─────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate('/sprintmanager')}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-700 transition-colors font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" /> Sprint Manager
+            </button>
+            <span className="text-gray-300">/</span>
+            <span className="text-sm font-semibold text-gray-800 truncate">
+              {projectMeta?.name || plan.project_name || 'Project Overview'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchProjectData}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            </button>
+            <img src={pmrgLogo} alt="PMRG" className="h-8 w-auto opacity-80" />
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-violet-950 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden">
+          <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/5 rounded-full blur-2xl" />
+          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center">
+                  <Building className="w-6 h-6 text-white" />
+                </div>
+                {projectMeta?.status && (
+                  <span className="text-xs font-semibold bg-white/20 px-2.5 py-1 rounded-full text-indigo-200">
+                    {projectMeta.status}
+                  </span>
+                )}
+                {(plan.start_date || plan.end_date) && (
+                  <span className="flex items-center gap-1 text-xs text-indigo-300 bg-white/10 px-2.5 py-1 rounded-full">
+                    <Calendar className="w-3 h-3" />
+                    {fmt(plan.start_date)} → {fmt(plan.end_date)}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {plan.project_name || projectMeta?.name || 'Project Overview'}
+              </h1>
+              <p className="text-slate-300 text-sm leading-relaxed max-w-2xl mb-3">{plan.description}</p>
+              {plan.product_vision && (
+                <div className="border-l-4 border-indigo-400 pl-4">
+                  <p className="text-xs text-indigo-300 uppercase tracking-widest mb-1 font-semibold">Product Vision</p>
+                  <p className="text-slate-200 text-sm italic">"{plan.product_vision}"</p>
+                </div>
+              )}
             </div>
+
+            {/* Overall progress ring */}
+            <div className="flex-shrink-0 bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[180px]">
+              <div className="relative w-24 h-24 mx-auto mb-3">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="url(#progv)" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${overallPct}, 100`} />
+                  <defs>
+                    <linearGradient id="progv" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#818cf8" />
+                      <stop offset="100%" stopColor="#a78bfa" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-white">{overallPct}%</span>
+                </div>
+              </div>
+              <p className="text-white font-semibold text-sm">Overall Progress</p>
+              <p className="text-indigo-300 text-xs mt-1">{doneSprintCount}/{totalSprints} sprints done</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Stats Row ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard icon={Layers}    value={totalSprints}          label="Sprints"       gradient="from-indigo-500 to-violet-600" />
+          <StatCard icon={BookOpen}  value={totalStories}          label="User Stories"  gradient="from-sky-500 to-blue-600"       />
+          <StatCard icon={BarChart3} value={displayPts}            label="Story Points"  gradient="from-amber-500 to-orange-600"   sub={donePts ? `${donePts} done` : null} />
+          <StatCard icon={Clock}     value={`${displayHours}h`}   label="Effort Hours"  gradient="from-rose-500 to-pink-600"      sub={doneHours ? `${doneHours}h done` : null} />
+          <StatCard icon={Users}     value={resources.length}      label="Team Members"  gradient="from-teal-500 to-emerald-600"   />
+          <StatCard icon={Flag}      value={epics.length}          label="Epics"         gradient="from-fuchsia-500 to-violet-600" />
+        </div>
+
+        {/* ── Progress Section ─────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-sm font-bold text-gray-800 mb-5 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-indigo-600" /> Progress Breakdown
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Sprints */}
+            <div>
+              <div className="flex justify-between text-xs font-medium text-gray-600 mb-2">
+                <span>Sprints Completed</span>
+                <span className="font-bold text-gray-900">{sprintPct}% · {doneSprintCount}/{totalSprints}</span>
+              </div>
+              <ProgressBar pct={sprintPct} color="bg-indigo-500" height="h-3" />
+              <div className="flex gap-4 mt-3 text-xs">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />{doneSprintCount} Done</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{inProgCount} Active</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" />{notStartedCount} Pending</span>
+              </div>
+            </div>
+            {/* Stories */}
+            <div>
+              <div className="flex justify-between text-xs font-medium text-gray-600 mb-2">
+                <span>Stories Completed</span>
+                <span className="font-bold text-gray-900">{storyPct}% · {doneStories}/{totalStories}</span>
+              </div>
+              <ProgressBar pct={storyPct} color="bg-emerald-500" height="h-3" />
+              <div className="flex gap-4 mt-3 text-xs">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />{doneStories} Done</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{activeStories} Active</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" />{totalStories - doneStories - activeStories} To Do</span>
+              </div>
+            </div>
+            {/* Points */}
+            <div>
+              <div className="flex justify-between text-xs font-medium text-gray-600 mb-2">
+                <span>Story Points Delivered</span>
+                <span className="font-bold text-gray-900">{displayPts ? Math.round((donePts/displayPts)*100) : 0}% · {donePts}/{displayPts}</span>
+              </div>
+              <ProgressBar pct={displayPts ? (donePts/displayPts)*100 : 0} color="bg-amber-500" height="h-3" />
+              <div className="flex gap-4 mt-3 text-xs">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{donePts} pts done</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" />{displayPts - donePts} remaining</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sprint Status Breakdown ───────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <GitBranch className="w-4 h-4 text-indigo-600" /> Sprints ({totalSprints})
+          </h2>
+          <div className="space-y-3">
+            {sprints.map((sprint, idx) => {
+              const sprintStories = stories.filter(s => s.sprint_id === sprint.sprint_id);
+              const sprintDone    = sprintStories.filter(isDone).length;
+              const sprintPts     = sprintStories.reduce((s, st) => s + (st.story_points || 0), 0);
+              const pct           = sprint.status === 'Completed' ? 100 : (sprintStories.length > 0 ? Math.round((sprintDone / sprintStories.length) * 100) : 0);
+              const cfg           = SPRINT_STATUS[sprint.status] || SPRINT_STATUS['Not Started'];
+              const Icon          = cfg.icon;
+
+              return (
+                <div key={sprint.sprint_id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:bg-gray-50/50 transition-colors">
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{idx+1}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-sm font-semibold text-gray-800 truncate">{sprint.name}</span>
+                      <StatusBadge status={sprint.status} />
+                    </div>
+                    <ProgressBar pct={pct} color={cfg.bar} height="h-2" />
+                  </div>
+                  <div className="flex-shrink-0 text-right min-w-[80px]">
+                    <p className="text-sm font-bold text-gray-800">{pct}%</p>
+                    <p className="text-xs text-gray-400">{sprintDone}/{sprintStories.length} stories</p>
+                  </div>
+                  <div className="flex-shrink-0 hidden md:block text-right min-w-[60px]">
+                    <p className="text-xs font-semibold text-gray-700">{sprintPts} pts</p>
+                    {(sprint.start_date || sprint.end_date) && (
+                      <p className="text-xs text-gray-400 whitespace-nowrap">
+                        {fmt(sprint.start_date)} → {fmt(sprint.end_date)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {sprints.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No sprints found</p>}
+          </div>
+        </div>
+
+        {/* ── Epics Grid ─────────────────────────────────────────────── */}
+        {epics.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Flag className="w-4 h-4 text-indigo-600" /> Epics ({epics.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {epics.map((epic, i) => {
+                const ec   = EPIC_COLORS[i % EPIC_COLORS.length];
+                const eSt  = epicMap[epic.epic_id] || [];
+                const eDone = eSt.filter(isDone).length;
+                const ePts  = eSt.reduce((s, st) => s + (st.story_points || 0), 0);
+                const ePct  = eSt.length > 0 ? Math.round((eDone / eSt.length) * 100) : 0;
+                return (
+                  <div
+                    key={epic.epic_id}
+                    onClick={() => setActiveEpicFilter(f => f === epic.epic_id ? null : epic.epic_id)}
+                    className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md ${activeEpicFilter === epic.epic_id ? 'ring-2 ring-indigo-400' : ''} ${ec.light}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`w-8 h-8 bg-gradient-to-br ${ec.gradient} rounded-lg flex items-center justify-center shadow-sm`}>
+                        <Target className="w-4 h-4 text-white" />
+                      </div>
+                      <span className={`text-xs font-semibold ${ec.text} bg-white/70 px-2 py-0.5 rounded-full border`}>
+                        {eSt.length} stories
+                      </span>
+                    </div>
+                    <h3 className={`font-bold text-sm ${ec.text} mb-1 leading-tight`}>{epic.name}</h3>
+                    <p className="text-xs text-gray-500 line-clamp-2 mb-3">{epic.description}</p>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                      <span>{ePts} pts</span>
+                      <span className="font-semibold">{ePct}% done</span>
+                    </div>
+                    <ProgressBar pct={ePct} color="bg-indigo-500" height="h-1.5" />
+                  </div>
+                );
+              })}
+            </div>
+            {activeEpicFilter && (
+              <button onClick={() => setActiveEpicFilter(null)} className="mt-3 text-xs text-indigo-600 hover:underline">
+                Clear filter
+              </button>
+            )}
           </div>
         )}
 
-        {/* Project Hero Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-500 rounded-xl flex items-center justify-center mr-4">
-                  <Building className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-800">{projectData.project_name}</h2>
-                  <p className="text-gray-600 text-lg">{projectData.project_id}</p>
-                </div>
-              </div>
-              <p className="text-gray-700 text-lg leading-relaxed mb-4">{projectData.description}</p>
-              <div className="flex items-center space-x-6 text-sm text-gray-600">
-                <div className="flex items-center">
-                  {/* <Calendar className="w-4 h-4 mr-2 text-blue-500" /> */}
-                  {/* <span>Started: {formatDate(projectData.start_date)}</span> */}
-                </div>
-                <div className="flex items-center">
-                  {/* <Target className="w-4 h-4 mr-2 text-red-500" /> */}
-                  {/* <span>Due: {formatDate(projectData.end_date)}</span> */}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end space-y-2">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">{getProjectProgress()}%</div>
-                <div className="text-sm text-gray-500">Complete</div>
-              </div>
-              <div className="w-20 h-20">
-                <svg className="transform -rotate-90 w-20 h-20">
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="30"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="transparent"
-                    className="text-gray-200"
-                  />
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="30"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="transparent"
-                    strokeDasharray={`${2 * Math.PI * 30}`}
-                    strokeDashoffset={`${2 * Math.PI * 30 * (1 - getProjectProgress() / 100)}`}
-                    className="text-green-500 transition-all duration-500"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Project Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Story Points</p>
-                <p className="text-3xl font-bold text-blue-600">{projectData.total_estimated_story_points}</p>
-                <p className="text-xs text-gray-500 mt-1">Across all epics</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Effort Hours</p>
-                <p className="text-3xl font-bold text-green-600">{projectData.total_estimated_effort_hours}h</p>
-                <p className="text-xs text-gray-500 mt-1">Estimated work time</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Team Members</p>
-                <p className="text-3xl font-bold text-purple-600">{projectData.resources?.length || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">Active contributors</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">User Stories</p>
-                <p className="text-3xl font-bold text-orange-600">{projectData.user_stories?.length || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">Total requirements</p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Project Progress Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-blue-600" />
-              Sprint Progress
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">Completed Sprints</span>
-                <span className="text-sm font-bold text-gray-800">{getSprintProgress()}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-blue-500 h-3 rounded-full transition-all duration-500" 
-                  style={{ width: `${getSprintProgress()}%` }}
-                ></div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                <div>
-                  <div className="font-bold text-blue-600">{projectData.sprints?.length || 0}</div>
-                  <div className="text-gray-500">Total</div>
-                </div>
-                <div>
-                  <div className="font-bold text-green-600">
-                    {projectData.sprints?.filter(s => {
-                      const today = new Date();
-                      const endDate = new Date(s.end_date);
-                      return today > endDate;
-                    }).length || 0}
-                  </div>
-                  <div className="text-gray-500">Done</div>
-                </div>
-                <div>
-                  <div className="font-bold text-orange-600">
-                    {projectData.sprints?.filter(s => {
-                      const today = new Date();
-                      const startDate = new Date(s.start_date);
-                      const endDate = new Date(s.end_date);
-                      return today >= startDate && today <= endDate;
-                    }).length || 0}
-                  </div>
-                  <div className="text-gray-500">Active</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
-              Story Completion
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">Stories Completed</span>
-                <span className="text-sm font-bold text-gray-800">{getProjectProgress()}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-green-500 h-3 rounded-full transition-all duration-500" 
-                  style={{ width: `${getProjectProgress()}%` }}
-                ></div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                <div>
-                  <div className="font-bold text-blue-600">{projectData.user_stories?.length || 0}</div>
-                  <div className="text-gray-500">Total</div>
-                </div>
-                <div>
-                  <div className="font-bold text-green-600">
-                    {projectData.user_stories?.filter(s => s.status === 'Done').length || 0}
-                  </div>
-                  <div className="text-gray-500">Done</div>
-                </div>
-                <div>
-                  <div className="font-bold text-orange-600">
-                    {projectData.user_stories?.filter(s => s.status === 'In Progress').length || 0}
-                  </div>
-                  <div className="text-gray-500">In Progress</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Project Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-              <Database className="w-5 h-5 mr-2 text-blue-600" />
-              Project Details
-            </h3>
-          </div>
-          
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <Target className="w-6 h-6 text-blue-600 mt-1" />
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project Vision</label>
-                    <p className="text-gray-900 leading-relaxed">{projectData.product_vision}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <Calendar className="w-6 h-6 text-green-600 mt-1" />
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project Timeline</label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        {/* <span className="text-sm text-gray-600">Start Date:</span> */}
-                        {/* <span className="text-sm font-medium text-gray-900">{formatDate(projectData.start_date)}</span> */}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        {/* <span className="text-sm text-gray-600">End Date:</span> */}
-                        {/* <span className="text-sm font-medium text-gray-900">{formatDate(projectData.end_date)}</span> */}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        {/* <span className="text-sm text-gray-600">Duration:</span> */}
-                        {/* <span className="text-sm font-medium text-gray-900">
-                          {Math.ceil((new Date(projectData.end_date) - new Date(projectData.start_date)) / (1000 * 60 * 60 * 24))} days
-                        </span> */}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <Trophy className="w-6 h-6 text-purple-600 mt-1" />
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Metrics</label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{projectData.epics?.length || 0}</div>
-                        <div className="text-xs text-gray-500">Epics</div>
-                      </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{projectData.sprints?.length || 0}</div>
-                        <div className="text-xs text-gray-500">Sprints</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <Zap className="w-6 h-6 text-yellow-600 mt-1" />
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project Status</label>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-yellow-500 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${getProjectProgress()}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">{getProjectProgress()}%</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                      {getProjectProgress() < 25 && "Project in early stages"}
-                      {getProjectProgress() >= 25 && getProjectProgress() < 50 && "Good progress made"}
-                      {getProjectProgress() >= 50 && getProjectProgress() < 75 && "Significant progress"}
-                      {getProjectProgress() >= 75 && "Nearing completion"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Team Resources */}
-        {projectData.resources && projectData.resources.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-indigo-600" />
-                  Team Resources
-                </h3>
-                {/* <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2">
-                  <Plus className="w-4 h-4" />
-                  <span>Add Member</span>
-                </button> */}
-              </div>
-            </div>
-            
+        {/* ── Team Resources ────────────────────────────────────────────── */}
+        {resources.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-600" /> Team ({resources.length})
+            </h2>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Team Member</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Daily Capacity</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Skills</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Workload</th>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-xs text-gray-400 font-semibold uppercase tracking-wide">
+                    <th className="px-4 py-2.5 text-left">Member</th>
+                    <th className="px-4 py-2.5 text-left">Role</th>
+                    <th className="px-4 py-2.5 text-center">Capacity</th>
+                    <th className="px-4 py-2.5 text-left">Skills</th>
+                    <th className="px-4 py-2.5 text-left">Workload</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {projectData.resources.map((resource) => {
-                    const assignedStories = projectData.user_stories?.filter(
-                      story => story.assigned_to_resource_id === resource.resource_id
-                    ) || [];
-                    const workloadHours = assignedStories.reduce((sum, story) => sum + (story.estimated_effort_hours || 0), 0);
-                    const workloadPercentage = Math.min((workloadHours / (resource.daily_capacity_hours * 30)) * 100, 100);
-                    
+                <tbody>
+                  {resources.map((r, i) => {
+                    const assigned    = stories.filter(s => s.assigned_to_resource_id === r.resource_id || s.assigned_to_resource_id === r.name);
+                    const workHours   = assigned.reduce((s, st) => s + (st.estimated_effort_hours || 0), 0);
+                    const maxHours    = (r.daily_capacity_hours || 6) * (totalSprints * 10 || 30);
+                    const workPct     = Math.min((workHours / maxHours) * 100, 100);
+                    const doneAsgn    = assigned.filter(isDone).length;
+
                     return (
-                      <tr key={resource.resource_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
-                              <User className="w-5 h-5 text-white" />
+                      <tr key={r.resource_id} className={`border-t border-gray-50 hover:bg-indigo-50/20 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/30'}`}>
+                        <td className="px-4 py-3 text-left">
+                          <div className="flex items-center gap-2.5 justify-start">
+                            <div className={`w-9 h-9 bg-gradient-to-br ${roleGrad(r.role)} rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0`}>
+                              {initials(r.name)}
                             </div>
-                            <div>
-                              <div className="font-medium">{resource.name}</div>
-                              <div className="text-xs text-gray-500">{resource.resource_id}</div>
+                            <div className="text-left">
+                              <p className="font-semibold text-gray-900 text-left">{r.name}</p>
+                              <p className="text-xs text-gray-400 text-left">{assigned.length} stories · {doneAsgn} done</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {resource.role}
-                          </span>
+                        <td className="px-4 py-3 text-left">
+                          <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold capitalize">{r.role}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 flex items-center">
-                          <Timer className="w-4 h-4 mr-2 text-green-500" />
-                          {resource.daily_capacity_hours}h/day
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-xs font-semibold text-gray-700">{r.daily_capacity_hours || 6}h/day</span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex flex-wrap gap-1">
-                            {resource.skills?.slice(0, 3).map((skill, index) => (
-                              <span key={index} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                {skill}
-                              </span>
+                        <td className="px-4 py-3 text-left">
+                          <div className="flex flex-wrap gap-1 justify-start">
+                            {(r.skills || []).slice(0, 3).map(sk => (
+                              <span key={sk} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">{sk}</span>
                             ))}
-                            {resource.skills?.length > 3 && (
-                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600">
-                                +{resource.skills.length - 3} more
-                              </span>
-                            )}
+                            {(r.skills || []).length > 3 && <span className="text-xs text-gray-400">+{r.skills.length - 3}</span>}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-600">{assignedStories.length} stories</span>
-                                <span className="text-xs font-medium">{workloadHours}h</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className={`h-2 rounded-full transition-all duration-300 ${
-                                    workloadPercentage > 80 ? 'bg-red-500' : 
-                                    workloadPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                                  }`}
-                                  style={{ width: `${workloadPercentage}%` }}
-                                ></div>
-                              </div>
+                        <td className="px-4 py-3 text-left">
+                          <div className="min-w-[120px] text-left">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                              <span>{workHours}h assigned</span>
+                              <span className={workPct > 80 ? 'text-red-500 font-bold' : 'text-gray-600'}>{Math.round(workPct)}%</span>
                             </div>
+                            <ProgressBar
+                              pct={workPct}
+                              color={workPct > 80 ? 'bg-red-500' : workPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}
+                              height="h-2"
+                            />
                           </div>
                         </td>
                       </tr>
@@ -670,1080 +515,112 @@ const ProjectView = () => {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Footer */}
-      <ProjectFooter />
+        {/* ── User Stories ─────────────────────────────────────────────── */}
+        {stories.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-indigo-600" />
+                User Stories ({filteredStories.length}{activeEpicFilter ? ' filtered' : ''})
+              </h2>
+              <div className="flex items-center gap-2">
+                {epics.length > 0 && (
+                  <select
+                    value={activeEpicFilter || ''}
+                    onChange={e => setActiveEpicFilter(e.target.value || null)}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  >
+                    <option value="">All Epics</option>
+                    {epics.map(e => <option key={e.epic_id} value={e.epic_id}>{e.name}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-xs">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-400 font-semibold uppercase tracking-wide">
+                    <th className="px-4 py-2.5 text-left">Story</th>
+                    <th className="px-4 py-2.5 text-left">Epic</th>
+                    <th className="px-4 py-2.5 text-left">Sprint</th>
+                    <th className="px-4 py-2.5 text-left">Priority</th>
+                    <th className="px-4 py-2.5 text-center">Pts</th>
+                    <th className="px-4 py-2.5 text-center">Hrs</th>
+                    <th className="px-4 py-2.5 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedStories.map((story, si) => {
+                    const epicObj    = epics.find(e => e.epic_id === story.epic_id);
+                    const sprintObj  = sprints.find(s => s.sprint_id === story.sprint_id);
+                    const ec         = EPIC_COLORS[epics.findIndex(e => e.epic_id === story.epic_id) % EPIC_COLORS.length];
+                    const pCfg = {
+                      High:   'text-red-600 bg-red-50 border-red-200',
+                      Medium: 'text-amber-600 bg-amber-50 border-amber-200',
+                      Low:    'text-green-600 bg-green-50 border-green-200',
+                    }[story.priority] || 'text-gray-600 bg-gray-50 border-gray-200';
+
+                    return (
+                      <tr key={story.story_id} className={`border-t border-gray-50 hover:bg-indigo-50/20 transition-colors`}>
+                        <td className="px-4 py-2.5 text-left">
+                          <p className="font-medium text-gray-800 leading-tight text-left">{story.name}</p>
+                        </td>
+                        <td className="px-4 py-2.5 text-left">
+                          {epicObj && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${ec?.light || ''} ${ec?.text || ''}`}>
+                              {epicObj.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-500 text-left">{sprintObj?.name || '—'}</td>
+                        <td className="px-4 py-2.5 text-left">
+                          <span className={`inline-block px-2 py-0.5 rounded border font-semibold ${pCfg}`}>{story.priority || 'Medium'}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center font-bold text-gray-700">{story.story_points || 0}</td>
+                        <td className="px-4 py-2.5 text-center text-gray-500">{story.estimated_effort_hours || 0}h</td>
+                        <td className="px-4 py-2.5 text-left">
+                          <StatusBadge status={story.status || 'Not Started'} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredStories.length > 12 && (
+              <button
+                onClick={() => setShowAllStories(v => !v)}
+                className="mt-4 flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:underline"
+              >
+                {showAllStories ? <><ChevronUp className="w-3.5 h-3.5" /> Show less</> : <><ChevronDown className="w-3.5 h-3.5" /> Show all {filteredStories.length} stories</>}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Bottom Nav ─────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <button
+            onClick={() => navigate('/project-detail')}
+            className="flex items-center gap-2 px-4 py-2.5 border border-indigo-200 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-50 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Project Timeline
+          </button>
+          <button
+            onClick={() => navigate('/sprintmanager')}
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+          >
+            Sprint Manager <ArrowLeft className="w-4 h-4 rotate-180" />
+          </button>
+        </div>
+
+        <div className="h-6" />
+      </div>
     </div>
   );
 };
 
 export default ProjectView;
-
-
-
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { 
-//   Calendar, 
-//   Clock, 
-//   Users, 
-//   Target, 
-//   BarChart3, 
-//   FolderOpen, 
-//   Database,
-//   User,
-//   Timer,
-//   BookOpen,
-//   Zap,
-//   Trophy,
-//   AlertTriangle,
-//   RefreshCw,
-//   Plus,
-//   Settings,
-//   Activity,
-//   TrendingUp,
-//   CheckCircle,
-//   Star,
-//   Building,
-//   Mail,
-//   Phone,
-//   Globe,
-//   ArrowLeft,
-//   Upload,
-//   FileText,
-//   X,
-//   Download,
-//   Eye,
-//   AlertCircle,
-//   CheckCircle2,
-//   Coffee,
-//   Briefcase
-// } from 'lucide-react';
-// import pmrgLogo from '../assets/pmrglogo.png';
-// import API_ENDPOINTS from '../components/apis/Auths';
-
-// const ProjectView = () => {
-//   const navigate = useNavigate();
-//   const [projectData, setProjectData] = useState(null);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState(null);
-  
-//   // Leave Plan Excel Validation States
-//   const [leavePlanFile, setLeavePlanFile] = useState(null);
-//   const [isValidatingExcel, setIsValidatingExcel] = useState(false);
-//   const [excelValidationResult, setExcelValidationResult] = useState(null);
-//   const [excelValidationError, setExcelValidationError] = useState(null);
-//   const [showLeavePlanDetails, setShowLeavePlanDetails] = useState(false);
-
-//   useEffect(() => {
-//     fetchProjectData();
-//   }, []);
-
-//   const fetchProjectData = async () => {
-//     try {
-//       setIsLoading(true);
-//       setError(null);
-//       const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
-//         method: 'GET',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//       });
-
-//       if (!response.ok) {
-//         throw new Error(`API Error: ${response.status} ${response.statusText}`);
-//       }
-
-//       const data = await response.json();
-//       console.log('Fetched projects data:', data);
-      
-//       const projectKeys = Object.keys(data);
-//       if (projectKeys.length === 0) {
-//         throw new Error('No projects found in the API response');
-//       }
-      
-//       const firstProjectKey = projectKeys[0];
-//       const projectData = data[firstProjectKey].project_plan;
-      
-//       setProjectData(projectData);
-      
-//     } catch (error) {
-//       console.error('Error fetching project data:', error);
-//       setError(error.message);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // Leave Plan Excel Validation Functions
-//   const handleLeavePlanUpload = async (event) => {
-//     const file = event.target.files[0];
-//     if (!file) return;
-
-//     // Validate file type
-//     const allowedTypes = [
-//       'application/vnd.ms-excel',
-//       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-//     ];
-    
-//     if (!allowedTypes.includes(file.type)) {
-//       setExcelValidationError('Please upload an Excel file (.xls or .xlsx)');
-//       event.target.value = '';
-//       return;
-//     }
-
-//     // Validate file size (10MB limit)
-//     if (file.size > 10 * 1024 * 1024) {
-//       setExcelValidationError('File size must be less than 10MB');
-//       event.target.value = '';
-//       return;
-//     }
-
-//     setLeavePlanFile(file);
-//     setExcelValidationError(null);
-//     setExcelValidationResult(null);
-    
-//     // Automatically validate the uploaded file
-//     await validateExcelFile(file);
-//   };
-
-//   const validateExcelFile = async (file) => {
-//     setIsValidatingExcel(true);
-//     setExcelValidationError(null);
-
-//     try {
-//       const formData = new FormData();
-//       formData.append('file', file);
-
-//       const response = await fetch('http://127.0.0.1:8000/validate-excel', {
-//         method: 'POST',
-//         body: formData,
-//       });
-
-//       if (!response.ok) {
-//         const errorText = await response.text();
-//         throw new Error(`Validation failed: ${response.status} - ${errorText}`);
-//       }
-
-//       const result = await response.json();
-//       console.log('Excel validation result:', result);
-      
-//       setExcelValidationResult(result);
-      
-//       if (result.valid) {
-//         setShowLeavePlanDetails(true);
-//       }
-      
-//     } catch (error) {
-//       console.error('Error validating Excel file:', error);
-//       setExcelValidationError(error.message);
-//     } finally {
-//       setIsValidatingExcel(false);
-//     }
-//   };
-
-//   const removeLeavePlanFile = () => {
-//     setLeavePlanFile(null);
-//     setExcelValidationResult(null);
-//     setExcelValidationError(null);
-//     setShowLeavePlanDetails(false);
-//   };
-
-//   const formatDate = (dateString) => {
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString('en-US', {
-//       weekday: 'short',
-//       month: 'short',
-//       day: 'numeric',
-//       year: 'numeric'
-//     });
-//   };
-
-//   const getProjectProgress = () => {
-//     if (!projectData?.user_stories) return 0;
-//     const completedStories = projectData.user_stories.filter(story => story.status === 'Done').length;
-//     return Math.round((completedStories / projectData.user_stories.length) * 100);
-//   };
-
-//   const getSprintProgress = () => {
-//     if (!projectData?.sprints) return 0;
-//     const today = new Date();
-//     const completedSprints = projectData.sprints.filter(sprint => {
-//       const endDate = new Date(sprint.end_date);
-//       return today > endDate;
-//     }).length;
-//     return Math.round((completedSprints / projectData.sprints.length) * 100);
-//   };
-
-//   const handleBack = () => {
-//     navigate('/sprintmanager');
-//   };
-
-//   const getLeaveTypeColor = (leaveType) => {
-//     switch (leaveType?.toLowerCase()) {
-//       case 'vacation': return 'bg-blue-100 text-blue-800';
-//       case 'sick': return 'bg-red-100 text-red-800';
-//       case 'personal': return 'bg-yellow-100 text-yellow-800';
-//       case 'emergency': return 'bg-orange-100 text-orange-800';
-//       case 'maternity': case 'paternity': return 'bg-purple-100 text-purple-800';
-//       default: return 'bg-gray-100 text-gray-800';
-//     }
-//   };
-
-//   const getLeaveIcon = (leaveType) => {
-//     switch (leaveType?.toLowerCase()) {
-//       case 'vacation': return <Coffee className="w-4 h-4" />;
-//       case 'sick': return <AlertCircle className="w-4 h-4" />;
-//       case 'personal': return <User className="w-4 h-4" />;
-//       case 'emergency': return <AlertTriangle className="w-4 h-4" />;
-//       case 'maternity': case 'paternity': return <Briefcase className="w-4 h-4" />;
-//       default: return <Calendar className="w-4 h-4" />;
-//     }
-//   };
-
-//   // Header Component
-//   const ProjectHeader = () => (
-//     <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 text-white shadow-lg">
-//       <div className="max-w-7xl mx-auto px-6 py-8">
-//         <div className="flex items-center justify-between">
-//           <div className="flex items-center space-x-4">
-//             <button
-//               onClick={handleBack}
-//               className="flex items-center text-white hover:text-green-100 transition-colors mr-4"
-//             >
-//               <ArrowLeft className="w-5 h-5 mr-2" />
-//               Back to Sprint Manager
-//             </button>
-//             <div className="border-l border-green-300 pl-4">
-//               <h1 className="text-4xl font-bold flex items-center">
-//                 <img src={pmrgLogo} alt="PMRG Logo" className="w-30 h-10" />
-//                 Project Overview
-//               </h1>
-//               <p className="text-green-100 mt-2 text-lg">Comprehensive project insights and management</p>
-//             </div>
-//           </div>
-//         </div>
-        
-//         {/* Project Progress Bar */}
-//         {projectData && (
-//           <div className="mt-6">
-//             <div className="flex items-center justify-between mb-2">
-//               <span className="text-sm font-medium text-white">Project Progress</span>
-//               <span className="text-sm text-green-100">{getProjectProgress()}% Complete</span>
-//             </div>
-//             <div className="w-full bg-white bg-opacity-20 rounded-full h-3">
-//               <div 
-//                 className="bg-white h-3 rounded-full transition-all duration-500" 
-//                 style={{ width: `${getProjectProgress()}%` }}
-//               ></div>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-
-//   // Footer Component
-//   const ProjectFooter = () => (
-//     <footer className="bg-gray-800 text-white mt-12">
-//       <div className="max-w-7xl mx-auto px-6 py-8">
-//         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-//           <div>
-//            <h3 className="text-lg font-semibold mb-4 flex items-center">
-//               <img src={pmrgLogo} alt="PMRG Logo" className="w-20 h-10 mr-2" />
-//               Project Tools
-//             </h3>
-//             <ul className="space-y-2 text-gray-300">
-//               <li><button onClick={() => navigate('/sprintmanager')} className="hover:text-white transition-colors">Sprint Manager</button></li>
-//               <li><button onClick={() => navigate('/epicsview')} className="hover:text-white transition-colors">Epic Management</button></li>
-//               <li><button onClick={() => navigate('/reports')} className="hover:text-white transition-colors">Analytics</button></li>
-//               <li><button onClick={() => navigate('/timeline')} className="hover:text-white transition-colors">Project Timeline</button></li>
-//             </ul>
-//           </div>
-//           <div>
-//             <h3 className="text-lg font-semibold mb-4">Team Resources</h3>
-//             <ul className="space-y-2 text-gray-300">
-//               <li><button className="hover:text-white transition-colors">Team Directory</button></li>
-//               <li><button className="hover:text-white transition-colors">Skill Matrix</button></li>
-//               <li><button className="hover:text-white transition-colors">Capacity Planning</button></li>
-//               <li><button className="hover:text-white transition-colors">Performance</button></li>
-//             </ul>
-//           </div>
-//           <div>
-//             <h3 className="text-lg font-semibold mb-4">Documentation</h3>
-//             <ul className="space-y-2 text-gray-300">
-//               <li><button className="hover:text-white transition-colors">Project Charter</button></li>
-//               <li><button className="hover:text-white transition-colors">Requirements</button></li>
-//               <li><button className="hover:text-white transition-colors">Architecture</button></li>
-//               <li><button className="hover:text-white transition-colors">User Guides</button></li>
-//             </ul>
-//           </div>
-//           <div>
-//             <h3 className="text-lg font-semibold mb-4">Support</h3>
-//             <div className="space-y-2 text-gray-300">
-//               <div className="flex items-center"><Mail className="w-4 h-4 mr-2" /> pmrgsolution@company.com</div>
-//               <div className="flex items-center"><Phone className="w-4 h-4 mr-2" /> +1 (555) 123-4567</div>
-//               <div className="flex items-center"><Globe className="w-4 h-4 mr-2" /> help.company.com</div>
-//             </div>
-//           </div>
-//         </div>
-//         <div className="border-t border-gray-700 pt-6 mt-8 text-center text-gray-400">
-//           <p>&copy; 2025 Project Management System. Empowering teams to deliver excellence.</p>
-//         </div>
-//       </div>
-//     </footer>
-//   );
-
-//   // Leave Plan Section Component
-//   const LeavePlanSection = () => (
-//     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-//       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-//         <div className="flex items-center justify-between">
-//           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//             <Calendar className="w-5 h-5 mr-2 text-green-600" />
-//             Team Leave Planning
-//           </h3>
-//           <div className="flex items-center space-x-2">
-//             {excelValidationResult?.valid && (
-//               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-//                 <CheckCircle2 className="w-4 h-4 mr-1" />
-//                 Valid Excel File
-//               </span>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="p-6">
-//         {/* Upload Section */}
-//         <div className="mb-6">
-//           <div className="flex items-center justify-between mb-4">
-//             <div>
-//               <h4 className="text-md font-medium text-gray-700">Upload Leave Plan Excel</h4>
-//               <p className="text-sm text-gray-500">Upload team leave schedules for better project planning</p>
-//             </div>
-//             {leavePlanFile && (
-//               <button
-//                 onClick={removeLeavePlanFile}
-//                 className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center space-x-1"
-//               >
-//                 <X className="w-4 h-4" />
-//                 <span>Remove File</span>
-//               </button>
-//             )}
-//           </div>
-
-//           {!leavePlanFile ? (
-//             <div className="relative">
-//               <input
-//                 type="file"
-//                 accept=".xls,.xlsx"
-//                 onChange={handleLeavePlanUpload}
-//                 className="hidden"
-//                 id="leave-plan-excel"
-//               />
-//               <label
-//                 htmlFor="leave-plan-excel"
-//                 className="flex items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 hover:bg-gray-100"
-//               >
-//                 <div className="text-center">
-//                   <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-//                   <span className="text-sm text-gray-600 font-medium">Upload Leave Plan Excel</span>
-//                   <p className="text-xs text-gray-500 mt-1">Excel files (.xls, .xlsx) up to 10MB</p>
-//                   <div className="mt-3 text-xs text-gray-400">
-//                     Expected columns: Team Member Name, Role, Leave Start Date, Leave End Date, etc.
-//                   </div>
-//                 </div>
-//               </label>
-//             </div>
-//           ) : (
-//             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-//               <div className="flex items-center space-x-3">
-//                 <div className="flex-shrink-0">
-//                   {isValidatingExcel ? (
-//                     <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-//                   ) : excelValidationResult?.valid ? (
-//                     <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-//                       <CheckCircle2 className="w-6 h-6 text-green-600" />
-//                     </div>
-//                   ) : excelValidationError ? (
-//                     <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-//                       <AlertCircle className="w-6 h-6 text-red-600" />
-//                     </div>
-//                   ) : (
-//                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-//                       <FileText className="w-6 h-6 text-blue-600" />
-//                     </div>
-//                   )}
-//                 </div>
-                
-//                 <div className="flex-1">
-//                   <div className="flex items-center justify-between">
-//                     <div>
-//                       <p className="text-sm font-medium text-gray-900">{leavePlanFile.name}</p>
-//                       <p className="text-xs text-gray-500">
-//                         {(leavePlanFile.size / 1024).toFixed(1)} KB
-//                         {isValidatingExcel && " • Validating..."}
-//                         {excelValidationResult?.valid && ` • ${excelValidationResult.info?.row_count} rows`}
-//                         {excelValidationError && " • Validation failed"}
-//                       </p>
-//                     </div>
-                    
-//                     {excelValidationResult?.valid && (
-//                       <button
-//                         onClick={() => setShowLeavePlanDetails(!showLeavePlanDetails)}
-//                         className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors flex items-center space-x-1"
-//                       >
-//                         <Eye className="w-3 h-3" />
-//                         <span>{showLeavePlanDetails ? 'Hide' : 'View'} Details</span>
-//                       </button>
-//                     )}
-//                   </div>
-                  
-//                   {excelValidationError && (
-//                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-//                       {excelValidationError}
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             </div>
-//           )}
-//         </div>
-
-//         {/* Validation Results */}
-//         {excelValidationResult?.valid && showLeavePlanDetails && (
-//           <div className="space-y-4">
-//             {/* File Info */}
-//             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-//               <h5 className="text-sm font-medium text-green-800 mb-3 flex items-center">
-//                 <CheckCircle2 className="w-4 h-4 mr-2" />
-//                 Excel File Validation Summary
-//               </h5>
-//               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-//                 <div>
-//                   <span className="font-medium text-green-700">Total Rows:</span>
-//                   <div className="text-green-800">{excelValidationResult.info?.row_count}</div>
-//                 </div>
-//                 <div>
-//                   <span className="font-medium text-green-700">Columns Found:</span>
-//                   <div className="text-green-800">{excelValidationResult.info?.columns?.length}</div>
-//                 </div>
-//                 <div>
-//                   <span className="font-medium text-green-700">Status:</span>
-//                   <div className="text-green-800">✓ Valid Format</div>
-//                 </div>
-//               </div>
-              
-//               {/* Columns */}
-//               <div className="mt-3">
-//                 <span className="font-medium text-green-700 text-xs">Detected Columns:</span>
-//                 <div className="flex flex-wrap gap-1 mt-1">
-//                   {excelValidationResult.info?.columns?.map((column, index) => (
-//                     <span key={index} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-//                       {column}
-//                     </span>
-//                   ))}
-//                 </div>
-//               </div>
-//             </div>
-
-//             {/* Preview Data */}
-//             {excelValidationResult.info?.preview && excelValidationResult.info.preview.length > 0 && (
-//               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-//                 <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-//                   <h5 className="text-sm font-medium text-gray-800 flex items-center">
-//                     <Eye className="w-4 h-4 mr-2 text-blue-500" />
-//                     Leave Plan Preview (First {Math.min(excelValidationResult.info.preview.length, 3)} records)
-//                   </h5>
-//                 </div>
-                
-//                 <div className="overflow-x-auto">
-//                   <table className="w-full text-xs">
-//                     <thead className="bg-gray-50 border-b border-gray-200">
-//                       <tr>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Team Member</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Role</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Leave Dates</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Duration</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Type</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Coverage</th>
-//                         <th className="px-3 py-2 text-left font-medium text-gray-700">Remarks</th>
-//                       </tr>
-//                     </thead>
-//                     <tbody className="divide-y divide-gray-200">
-//                       {excelValidationResult.info.preview.slice(0, 3).map((record, index) => (
-//                         <tr key={index} className="hover:bg-gray-50">
-//                           <td className="px-3 py-2">
-//                             <div className="flex items-center space-x-2">
-//                               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-//                                 <User className="w-3 h-3 text-white" />
-//                               </div>
-//                               <span className="font-medium text-gray-900">{record['Team Member Name']}</span>
-//                             </div>
-//                           </td>
-//                           <td className="px-3 py-2">
-//                             <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-//                               {record['Role']}
-//                             </span>
-//                           </td>
-//                           <td className="px-3 py-2 text-gray-700">
-//                             <div className="space-y-1">
-//                               <div className="flex items-center text-xs">
-//                                 <Calendar className="w-3 h-3 mr-1 text-green-500" />
-//                                 {formatDate(record['Leave Start Date'])}
-//                               </div>
-//                               <div className="flex items-center text-xs">
-//                                 <Calendar className="w-3 h-3 mr-1 text-red-500" />
-//                                 {formatDate(record['Leave End Date'])}
-//                               </div>
-//                             </div>
-//                           </td>
-//                           <td className="px-3 py-2">
-//                             <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-//                               {record['Total Leave Days']} {record['Total Leave Days'] === 1 ? 'day' : 'days'}
-//                             </span>
-//                           </td>
-//                           <td className="px-3 py-2">
-//                             <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getLeaveTypeColor(record['Leave Type'])}`}>
-//                               {getLeaveIcon(record['Leave Type'])}
-//                               <span className="ml-1">{record['Leave Type']}</span>
-//                             </span>
-//                           </td>
-//                           <td className="px-3 py-2">
-//                             <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-//                               record['Partial or Full Leave'] === 'Full Leave' 
-//                                 ? 'bg-orange-100 text-orange-800' 
-//                                 : 'bg-yellow-100 text-yellow-800'
-//                             }`}>
-//                               {record['Partial or Full Leave']}
-//                             </span>
-//                           </td>
-//                           <td className="px-3 py-2 text-gray-600 max-w-32 truncate" title={record['Remarks']}>
-//                             {record['Remarks'] || 'No remarks'}
-//                           </td>
-//                         </tr>
-//                       ))}
-//                     </tbody>
-//                   </table>
-//                 </div>
-                
-//                 {excelValidationResult.info.preview.length > 3 && (
-//                   <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-center">
-//                     <span className="text-xs text-gray-600">
-//                       Showing 3 of {excelValidationResult.info.row_count} total records
-//                     </span>
-//                   </div>
-//                 )}
-//               </div>
-//             )}
-
-//             {/* Actions */}
-//             <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-//               <div className="text-xs text-gray-600">
-//                 Leave plan data is ready for sprint planning integration
-//               </div>
-//               <div className="flex items-center space-x-2">
-//                 <button
-//                   onClick={() => console.log('Export leave plan data')}
-//                   className="px-3 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 transition-colors flex items-center space-x-1"
-//                 >
-//                   <Download className="w-3 h-3" />
-//                   <span>Export</span>
-//                 </button>
-//                 <button
-//                   onClick={() => navigate('/planning')}
-//                   className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors flex items-center space-x-1"
-//                 >
-//                   <Zap className="w-3 h-3" />
-//                   <span>Use in Sprint Planning</span>
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Expected Format Guide */}
-//         {!leavePlanFile && (
-//           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-//             <h5 className="text-sm font-medium text-blue-800 mb-3">Expected Excel Format:</h5>
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-blue-700">
-//               <div>
-//                 <p className="font-medium mb-2">Required Columns:</p>
-//                 <ul className="space-y-1">
-//                   <li>• Team Member Name</li>
-//                   <li>• Role</li>
-//                   <li>• Leave Start Date</li>
-//                   <li>• Leave End Date</li>
-//                 </ul>
-//               </div>
-//               <div>
-//                 <p className="font-medium mb-2">Optional Columns:</p>
-//                 <ul className="space-y-1">
-//                   <li>• Total Leave Days</li>
-//                   <li>• Leave Type (Vacation, Sick, etc.)</li>
-//                   <li>• Partial or Full Leave</li>
-//                   <li>• Remarks</li>
-//                 </ul>
-//               </div>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-
-//   if (isLoading) {
-//     return (
-//       <div className="min-h-screen bg-gray-50">
-//         <ProjectHeader />
-//         <div className="flex items-center justify-center min-h-64 py-20">
-//           <div className="text-center">
-//             <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-//             <p className="text-gray-600 text-lg">Loading project data...</p>
-//           </div>
-//         </div>
-//         <ProjectFooter />
-//       </div>
-//     );
-//   }
-
-//   if (!projectData) {
-//     return (
-//       <div className="min-h-screen bg-gray-50">
-//         <ProjectHeader />
-//         <div className="max-w-7xl mx-auto px-6 py-20">
-//           <div className="text-center">
-//             <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-//             <h2 className="text-2xl font-bold text-gray-800 mb-2">No Project Data Available</h2>
-//             <p className="text-gray-600 mb-6">Unable to load project information. Please try again.</p>
-//             <button 
-//               onClick={fetchProjectData}
-//               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-//             >
-//               Retry Loading
-//             </button>
-//           </div>
-//         </div>
-//         <ProjectFooter />
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-gray-50">
-//       {/* Header */}
-//       <ProjectHeader />
-
-//       {/* Main Content */}
-//       <div className="max-w-7xl mx-auto px-6 py-8">
-//         {/* Error Display */}
-//         {error && (
-//           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-//             <div className="flex items-center">
-//               <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-//               <span className="text-red-700 text-sm">Error loading data: {error}</span>
-//               <button 
-//                 onClick={fetchProjectData}
-//                 className="ml-4 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
-//               >
-//                 Retry
-//               </button>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Project Hero Section */}
-//         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-//           <div className="flex items-start justify-between">
-//             <div className="flex-1">
-//               <div className="flex items-center mb-4">
-//                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-500 rounded-xl flex items-center justify-center mr-4">
-//                   <Building className="w-8 h-8 text-white" />
-//                 </div>
-//                 <div>
-//                   <h2 className="text-3xl font-bold text-gray-800">{projectData.project_name}</h2>
-//                   <p className="text-gray-600 text-lg">{projectData.project_id}</p>
-//                 </div>
-//               </div>
-//               <p className="text-gray-700 text-lg leading-relaxed mb-4">{projectData.description}</p>
-//               <div className="flex items-center space-x-6 text-sm text-gray-600">
-//                 <div className="flex items-center">
-//                   <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-//                   <span>Started: {formatDate(projectData.start_date)}</span>
-//                 </div>
-//                 <div className="flex items-center">
-//                   <Target className="w-4 h-4 mr-2 text-red-500" />
-//                   <span>Due: {formatDate(projectData.end_date)}</span>
-//                 </div>
-//               </div>
-//             </div>
-//             <div className="flex flex-col items-end space-y-2">
-//               <div className="text-right">
-//                 <div className="text-2xl font-bold text-blue-600">{getProjectProgress()}%</div>
-//                 <div className="text-sm text-gray-500">Complete</div>
-//               </div>
-//               <div className="w-20 h-20">
-//                 <svg className="transform -rotate-90 w-20 h-20">
-//                   <circle
-//                     cx="40"
-//                     cy="40"
-//                     r="30"
-//                     stroke="currentColor"
-//                     strokeWidth="8"
-//                     fill="transparent"
-//                     className="text-gray-200"
-//                   />
-//                   <circle
-//                     cx="40"
-//                     cy="40"
-//                     r="30"
-//                     stroke="currentColor"
-//                     strokeWidth="8"
-//                     fill="transparent"
-//                     strokeDasharray={`${2 * Math.PI * 30}`}
-//                     strokeDashoffset={`${2 * Math.PI * 30 * (1 - getProjectProgress() / 100)}`}
-//                     className="text-green-500 transition-all duration-500"
-//                   />
-//                 </svg>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Project Overview Cards */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <p className="text-sm font-medium text-gray-600">Total Story Points</p>
-//                 <p className="text-3xl font-bold text-blue-600">{projectData.total_estimated_story_points}</p>
-//                 <p className="text-xs text-gray-500 mt-1">Across all epics</p>
-//               </div>
-//               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-//                 <BarChart3 className="w-6 h-6 text-blue-600" />
-//               </div>
-//             </div>
-//           </div>
-          
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <p className="text-sm font-medium text-gray-600">Total Effort Hours</p>
-//                 <p className="text-3xl font-bold text-green-600">{projectData.total_estimated_effort_hours}h</p>
-//                 <p className="text-xs text-gray-500 mt-1">Estimated work time</p>
-//               </div>
-//               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-//                 <Clock className="w-6 h-6 text-green-600" />
-//               </div>
-//             </div>
-//           </div>
-          
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <p className="text-sm font-medium text-gray-600">Team Members</p>
-//                 <p className="text-3xl font-bold text-purple-600">{projectData.resources?.length || 0}</p>
-//                 <p className="text-xs text-gray-500 mt-1">Active contributors</p>
-//               </div>
-//               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-//                 <Users className="w-6 h-6 text-purple-600" />
-//               </div>
-//             </div>
-//           </div>
-          
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <p className="text-sm font-medium text-gray-600">User Stories</p>
-//                 <p className="text-3xl font-bold text-orange-600">{projectData.user_stories?.length || 0}</p>
-//                 <p className="text-xs text-gray-500 mt-1">Total requirements</p>
-//               </div>
-//               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-//                 <BookOpen className="w-6 h-6 text-orange-600" />
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Project Progress Metrics */}
-//         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-//               <Activity className="w-5 h-5 mr-2 text-blue-600" />
-//               Sprint Progress
-//             </h3>
-//             <div className="space-y-4">
-//               <div className="flex items-center justify-between">
-//                 <span className="text-sm font-medium text-gray-600">Completed Sprints</span>
-//                 <span className="text-sm font-bold text-gray-800">{getSprintProgress()}%</span>
-//               </div>
-//               <div className="w-full bg-gray-200 rounded-full h-3">
-//                 <div 
-//                   className="bg-blue-500 h-3 rounded-full transition-all duration-500" 
-//                   style={{ width: `${getSprintProgress()}%` }}
-//                 ></div>
-//               </div>
-//               <div className="grid grid-cols-3 gap-4 text-center text-sm">
-//                 <div>
-//                   <div className="font-bold text-blue-600">{projectData.sprints?.length || 0}</div>
-//                   <div className="text-gray-500">Total</div>
-//                 </div>
-//                 <div>
-//                   <div className="font-bold text-green-600">
-//                     {projectData.sprints?.filter(s => {
-//                       const today = new Date();
-//                       const endDate = new Date(s.end_date);
-//                       return today > endDate;
-//                     }).length || 0}
-//                   </div>
-//                   <div className="text-gray-500">Done</div>
-//                 </div>
-//                 <div>
-//                   <div className="font-bold text-orange-600">
-//                     {projectData.sprints?.filter(s => {
-//                       const today = new Date();
-//                       const startDate = new Date(s.start_date);
-//                       const endDate = new Date(s.end_date);
-//                       return today >= startDate && today <= endDate;
-//                     }).length || 0}
-//                   </div>
-//                   <div className="text-gray-500">Active</div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-//             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-//               <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
-//               Story Completion
-//             </h3>
-//             <div className="space-y-4">
-//               <div className="flex items-center justify-between">
-//                 <span className="text-sm font-medium text-gray-600">Stories Completed</span>
-//                 <span className="text-sm font-bold text-gray-800">{getProjectProgress()}%</span>
-//               </div>
-//               <div className="w-full bg-gray-200 rounded-full h-3">
-//                 <div 
-//                   className="bg-green-500 h-3 rounded-full transition-all duration-500" 
-//                   style={{ width: `${getProjectProgress()}%` }}
-//                 ></div>
-//               </div>
-//               <div className="grid grid-cols-3 gap-4 text-center text-sm">
-//                 <div>
-//                   <div className="font-bold text-blue-600">{projectData.user_stories?.length || 0}</div>
-//                   <div className="text-gray-500">Total</div>
-//                 </div>
-//                 <div>
-//                   <div className="font-bold text-green-600">
-//                     {projectData.user_stories?.filter(s => s.status === 'Done').length || 0}
-//                   </div>
-//                   <div className="text-gray-500">Done</div>
-//                 </div>
-//                 <div>
-//                   <div className="font-bold text-orange-600">
-//                     {projectData.user_stories?.filter(s => s.status === 'In Progress').length || 0}
-//                   </div>
-//                   <div className="text-gray-500">In Progress</div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Project Details */}
-//         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-//           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-//             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//               <Database className="w-5 h-5 mr-2 text-blue-600" />
-//               Project Details
-//             </h3>
-//           </div>
-          
-//           <div className="p-6">
-//             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-//               <div className="space-y-6">
-//                 <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-//                   <Target className="w-6 h-6 text-blue-600 mt-1" />
-//                   <div className="flex-1">
-//                     <label className="block text-sm font-medium text-gray-700 mb-2">Project Vision</label>
-//                     <p className="text-gray-900 leading-relaxed">{projectData.product_vision}</p>
-//                   </div>
-//                 </div>
-                
-//                 <div className="flex items-start space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
-//                   <Calendar className="w-6 h-6 text-green-600 mt-1" />
-//                   <div className="flex-1">
-//                     <label className="block text-sm font-medium text-gray-700 mb-2">Project Timeline</label>
-//                     <div className="space-y-2">
-//                       <div className="flex items-center justify-between">
-//                         <span className="text-sm text-gray-600">Start Date:</span>
-//                         <span className="text-sm font-medium text-gray-900">{formatDate(projectData.start_date)}</span>
-//                       </div>
-//                       <div className="flex items-center justify-between">
-//                         <span className="text-sm text-gray-600">End Date:</span>
-//                         <span className="text-sm font-medium text-gray-900">{formatDate(projectData.end_date)}</span>
-//                       </div>
-//                       <div className="flex items-center justify-between">
-//                         <span className="text-sm text-gray-600">Duration:</span>
-//                         <span className="text-sm font-medium text-gray-900">
-//                           {Math.ceil((new Date(projectData.end_date) - new Date(projectData.start_date)) / (1000 * 60 * 60 * 24))} days
-//                         </span>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-              
-//               <div className="space-y-6">
-//                 <div className="flex items-start space-x-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-//                   <Trophy className="w-6 h-6 text-purple-600 mt-1" />
-//                   <div className="flex-1">
-//                     <label className="block text-sm font-medium text-gray-700 mb-2">Key Metrics</label>
-//                     <div className="grid grid-cols-2 gap-4">
-//                       <div className="text-center p-3 bg-white rounded-lg">
-//                         <div className="text-2xl font-bold text-blue-600">{projectData.epics?.length || 0}</div>
-//                         <div className="text-xs text-gray-500">Epics</div>
-//                       </div>
-//                       <div className="text-center p-3 bg-white rounded-lg">
-//                         <div className="text-2xl font-bold text-green-600">{projectData.sprints?.length || 0}</div>
-//                         <div className="text-xs text-gray-500">Sprints</div>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-                
-//                 <div className="flex items-start space-x-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-//                   <Zap className="w-6 h-6 text-yellow-600 mt-1" />
-//                   <div className="flex-1">
-//                     <label className="block text-sm font-medium text-gray-700 mb-2">Project Status</label>
-//                     <div className="flex items-center space-x-2">
-//                       <div className="flex-1 bg-gray-200 rounded-full h-2">
-//                         <div 
-//                           className="bg-yellow-500 h-2 rounded-full transition-all duration-300" 
-//                           style={{ width: `${getProjectProgress()}%` }}
-//                         ></div>
-//                       </div>
-//                       <span className="text-sm font-medium text-gray-700">{getProjectProgress()}%</span>
-//                     </div>
-//                     <p className="text-sm text-gray-600 mt-2">
-//                       {getProjectProgress() < 25 && "Project in early stages"}
-//                       {getProjectProgress() >= 25 && getProjectProgress() < 50 && "Good progress made"}
-//                       {getProjectProgress() >= 50 && getProjectProgress() < 75 && "Significant progress"}
-//                       {getProjectProgress() >= 75 && "Nearing completion"}
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Team Resources */}
-//         {projectData.resources && projectData.resources.length > 0 && (
-//           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-//             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-//               <div className="flex items-center justify-between">
-//                 <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//                   <Users className="w-5 h-5 mr-2 text-indigo-600" />
-//                   Team Resources
-//                 </h3>
-//               </div>
-//             </div>
-            
-//             <div className="overflow-x-auto">
-//               <table className="w-full">
-//                 <thead className="bg-gray-50 border-b border-gray-200">
-//                   <tr>
-//                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Team Member</th>
-//                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-//                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Daily Capacity</th>
-//                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Skills</th>
-//                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Workload</th>
-//                   </tr>
-//                 </thead>
-//                 <tbody className="divide-y divide-gray-200">
-//                   {projectData.resources.map((resource) => {
-//                     const assignedStories = projectData.user_stories?.filter(
-//                       story => story.assigned_to_resource_id === resource.resource_id
-//                     ) || [];
-//                     const workloadHours = assignedStories.reduce((sum, story) => sum + (story.estimated_effort_hours || 0), 0);
-//                     const workloadPercentage = Math.min((workloadHours / (resource.daily_capacity_hours * 30)) * 100, 100);
-                    
-//                     return (
-//                       <tr key={resource.resource_id} className="hover:bg-gray-50">
-//                         <td className="px-6 py-4 text-sm text-gray-900">
-//                           <div className="flex items-center">
-//                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
-//                               <User className="w-5 h-5 text-white" />
-//                             </div>
-//                             <div>
-//                               <div className="font-medium">{resource.name}</div>
-//                               <div className="text-xs text-gray-500">{resource.resource_id}</div>
-//                             </div>
-//                           </div>
-//                         </td>
-//                         <td className="px-6 py-4 text-sm text-gray-900">
-//                           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-//                             {resource.role}
-//                           </span>
-//                         </td>
-//                         <td className="px-6 py-4 text-sm text-gray-900 flex items-center">
-//                           <Timer className="w-4 h-4 mr-2 text-green-500" />
-//                           {resource.daily_capacity_hours}h/day
-//                         </td>
-//                         <td className="px-6 py-4 text-sm text-gray-900">
-//                           <div className="flex flex-wrap gap-1">
-//                             {resource.skills?.slice(0, 3).map((skill, index) => (
-//                               <span key={index} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-//                                 {skill}
-//                               </span>
-//                             ))}
-//                             {resource.skills?.length > 3 && (
-//                               <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600">
-//                                 +{resource.skills.length - 3} more
-//                               </span>
-//                             )}
-//                           </div>
-//                         </td>
-//                         <td className="px-6 py-4 text-sm text-gray-900">
-//                           <div className="flex items-center space-x-3">
-//                             <div className="flex-1">
-//                               <div className="flex items-center justify-between mb-1">
-//                                 <span className="text-xs text-gray-600">{assignedStories.length} stories</span>
-//                                 <span className="text-xs font-medium">{workloadHours}h</span>
-//                               </div>
-//                               <div className="w-full bg-gray-200 rounded-full h-2">
-//                                 <div 
-//                                   className={`h-2 rounded-full transition-all duration-300 ${
-//                                     workloadPercentage > 80 ? 'bg-red-500' : 
-//                                     workloadPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-//                                   }`}
-//                                   style={{ width: `${workloadPercentage}%` }}
-//                                 ></div>
-//                               </div>
-//                             </div>
-//                           </div>
-//                         </td>
-//                       </tr>
-//                     );
-//                   })}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Leave Plan Section */}
-//         <LeavePlanSection />
-//       </div>
-
-//       {/* Footer */}
-//       <ProjectFooter />
-//     </div>
-//   );
-// };
-
-// export default ProjectView;

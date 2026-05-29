@@ -14,80 +14,121 @@ import {
 import pmrgLogo from '../src/assets/pmrglogo.png';
 import API_ENDPOINTS from './Auths';
 
+// ─── date helpers ───────────────────────────────────────────────────────────
+const isoToInput = (iso) => {
+  if (!iso) return '';
+  return (iso || '').split('T')[0];
+};
+
+const today = () => new Date().toISOString().split('T')[0];
+
+const addDays = (dateStr, days) => {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
+const daysBetween = (a, b) => {
+  if (!a || !b) return null;
+  return Math.ceil((new Date(b) - new Date(a)) / (1000 * 60 * 60 * 24)) + 1;
+};
+
 const SprintManager = () => {
   const navigate = useNavigate();
 
-  const [sprints, setSprints] = useState([]);
-  const [projectData, setProjectData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('sprints');
-  const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [sprints,          setSprints]          = useState([]);
+  const [projectData,      setProjectData]      = useState(null);
+  const [projectMeta,      setProjectMeta]      = useState(null); // DB-level fields: created_at, status, name
+  const [activeProjectId,  setActiveProjectId]  = useState(null);
+  const [isLoading,        setIsLoading]        = useState(true);
+  const [error,            setError]            = useState(null);
+  const [activeTab,        setActiveTab]        = useState('sprints');
+  const [dropdownOpen,     setDropdownOpen]     = useState(null);
+  const [sprintLocalDates, setSprintLocalDates] = useState({});  // { sprintId: { startDate, endDate } }
+  const [savingSprintDate, setSavingSprintDate] = useState({});  // { sprintId: 'saving'|'saved'|null }
 
   // ============================================
-  // LOAD DATA
+  // LOAD DATA — read activeProjectId from localStorage
   // ============================================
 
   useEffect(() => {
+    const projectId = localStorage.getItem('activeProjectId');
 
-  const storedSprintData =
-    localStorage.getItem(
-      'sprintManagerData'
-    );
-
-  const storedProjectData =
-    localStorage.getItem(
-      'projectData'
-    );
-
-  if (
-    storedSprintData &&
-    storedProjectData
-  ) {
-
-    try {
-
-      const parsedSprintData =
-        JSON.parse(storedSprintData);
-
-      const parsedProjectData =
-        JSON.parse(storedProjectData);
-
-      setSprints(parsedSprintData);
-
-      setProjectData(parsedProjectData);
-
-      setIsLoading(false);
-
+    // If no active project, redirect to projects page
+    if (!projectId) {
+      navigate('/projects');
       return;
-
-    } catch (error) {
-
-      console.error(
-        'Error restoring sprint data:',
-        error
-      );
     }
-  }
 
-  fetchSprints();
+    setActiveProjectId(projectId);
 
-}, []);
+    // Try restoring cached data for THIS specific project
+    const storedSprintData   = localStorage.getItem('sprintManagerData');
+    const storedProjectData  = localStorage.getItem('projectData');
+    const storedProjectIdKey = localStorage.getItem('cachedProjectId');
+    const storedProjectMeta  = localStorage.getItem('projectMeta');
+
+    if (
+      storedSprintData &&
+      storedProjectData &&
+      storedProjectIdKey === projectId
+    ) {
+      try {
+        const parsedSprints = JSON.parse(storedSprintData).map((s) => {
+          if (s.startDate && s.endDate && s.startDate > s.endDate) {
+            const projectMinDate = isoToInput(JSON.parse(storedProjectMeta || '{}').created_at) || today();
+            const fourteenDaysAgo = addDays(s.endDate, -13);
+            if (fourteenDaysAgo >= projectMinDate) {
+              s.startDate = fourteenDaysAgo;
+            } else {
+              s.startDate = projectMinDate <= s.endDate ? projectMinDate : s.endDate;
+            }
+          }
+          if (s.startDate && s.endDate) {
+            const start = new Date(s.startDate);
+            const end   = new Date(s.endDate);
+            const d     = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+            s.days = `${d}d`;
+          }
+          return s;
+        });
+
+        setSprints(parsedSprints);
+        setProjectData(JSON.parse(storedProjectData));
+        if (storedProjectMeta) {
+          setProjectMeta(JSON.parse(storedProjectMeta));
+        }
+
+        // Seed sprintLocalDates from cached sprints
+        const dates = {};
+        parsedSprints.forEach((s) => {
+          dates[s.id] = { startDate: s.startDate || '', endDate: s.endDate || '' };
+        });
+        setSprintLocalDates(dates);
+
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        console.error('Error restoring sprint data:', e);
+      }
+    }
+
+    fetchSprints(projectId);
+  }, []);
 
   // ============================================
   // FETCH SPRINTS
   // ============================================
 
-  const fetchSprints = async () => {
+  const fetchSprints = async (projectId) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(API_ENDPOINTS.GET_SPRINTS, {
+      const url = API_ENDPOINTS.GET_PROJECT(projectId);
+      const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -95,182 +136,161 @@ const SprintManager = () => {
       }
 
       const data = await response.json();
+      console.log('Fetched project data:', data);
 
-      console.log('Fetched projects data:', data);
+      // GET /projects/{id} returns { project_id, name, project_plan, ... }
+      const projectPlan = data.project_plan;
 
-      const projectKeys = Object.keys(data);
+      setProjectData(projectPlan);
+      const meta = {
+        created_at: data.created_at,
+        name: data.name,
+        status: data.status,
+      };
+      setProjectMeta(meta);
+      localStorage.setItem('projectMeta', JSON.stringify(meta));
+      localStorage.setItem('projectData', JSON.stringify(projectPlan));
+      localStorage.setItem('cachedProjectId', projectId);
 
-      if (projectKeys.length === 0) {
-        throw new Error('No projects found in API');
-      }
+      if (projectPlan.sprints && Array.isArray(projectPlan.sprints)) {
+        const sprintList = projectPlan.sprints.map((sprint, index) => {
 
-      const firstProjectKey = projectKeys[0];
-
-      const projectData = data[firstProjectKey].project_plan;
-      console.log(
-  'PROJECT RESOURCES:',
-  projectData.resources
-);
-
-console.log(
-  'RESOURCE COUNT:',
-  projectData.resources?.length
-);
-
-      setProjectData(projectData);
-      localStorage.setItem(
-        'projectData',
-        JSON.stringify(projectData)
-      );
-
-      if (projectData.sprints && Array.isArray(projectData.sprints)) {
-        const sprintList = projectData.sprints.map((sprint, index) => {
-
-          const assignedStories = projectData.user_stories
-            ? projectData.user_stories.filter(
+          const assignedStories = projectPlan.user_stories
+            ? projectPlan.user_stories.filter(
                 story => story.sprint_id === sprint.sprint_id
               )
             : [];
 
-          // ============================================
-          // IMPORTANT FIX
-          // MANUAL STATUS
-          // ============================================
+          let startDate = sprint.start_date || null;
+          let endDate   = sprint.end_date || null;
 
-          // const diffDays = sprint.duration_days || 14;
-          let diffDays = '--';
-
-          if (
-            sprint.start_date &&
-            sprint.end_date
-          ) {
-
-            const startDate = new Date(
-              sprint.start_date
-            );
-
-            const endDate = new Date(
-              sprint.end_date
-            );
-
-            const diffTime =
-              Math.abs(endDate - startDate);
-
-            diffDays =
-              Math.ceil(
-                diffTime /
-                (1000 * 60 * 60 * 24)
-              ) + 1;
+          if (startDate && endDate && startDate > endDate) {
+            const projectMinDate = isoToInput(data.created_at) || today();
+            const fourteenDaysAgo = addDays(endDate, -13);
+            if (fourteenDaysAgo >= projectMinDate) {
+              startDate = fourteenDaysAgo;
+            } else {
+              startDate = projectMinDate <= endDate ? projectMinDate : endDate;
+            }
           }
-          // let diffDays = '--';
 
-          //   if (
-          //     sprint.start_date &&
-          //     sprint.end_date
-          //   ) {
-
-          //     const startDate = new Date(
-          //       sprint.start_date
-          //     );
-
-          //     const endDate = new Date(
-          //       sprint.end_date
-          //     );
-
-          //     const diffTime =
-          //       Math.abs(endDate - startDate);
-
-          //     diffDays = Math.ceil(
-          //       diffTime /
-          //       (1000 * 60 * 60 * 24)
-          //     );
-          //   }
-
-          const status = sprint.status || 'Not Started';
+          let diffDays = '--';
+          if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end   = new Date(endDate);
+            const computedDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+            diffDays = `${computedDays}d`;
+          }
 
           return {
-            id: sprint.sprint_id,
-            name: sprint.name,
-
-            days:
-            diffDays !== '--'
-              ? `${diffDays}d`
-              : '--',
-
-            status: status,
-
-            startDate: sprint.start_date || null,
-            endDate: sprint.end_date || null,
-
-            selected: index === 0,
-
-            color:
-              index === 0
-                ? 'bg-orange-200'
-                : 'bg-gray-100',
-
-            storiesCount: assignedStories.length,
-
-            backlogCount: 0,
-
-            resourcesCount:
-              projectData.resources?.length || 0,
-
-            totalStoryPoints: assignedStories.reduce(
-              (sum, story) =>
-                sum + (story.story_points || 0),
-              0
-            ),
-
-            totalEffortHours: assignedStories.reduce(
-              (sum, story) =>
-                sum + (story.estimated_effort_hours || 0),
-              0
-            ),
-
-            projectKey: firstProjectKey,
+            id:          sprint.sprint_id,
+            name:        sprint.name,
+            days:        diffDays !== '--' ? diffDays : `${sprint.duration_days || 14}d`,
+            status:      sprint.status || 'Not Started',
+            startDate:   startDate,
+            endDate:     endDate,
+            selected:    index === 0,
+            color:       index === 0 ? 'bg-orange-200' : 'bg-gray-100',
+            storiesCount:       assignedStories.length,
+            backlogCount:       0,
+            resourcesCount:     projectPlan.resources?.length || 0,
+            totalStoryPoints:   assignedStories.reduce((s, st) => s + (st.story_points || 0), 0),
+            totalEffortHours:   assignedStories.reduce((s, st) => s + (st.estimated_effort_hours || 0), 0),
+            projectKey:  projectId,
           };
         });
 
         setSprints(sprintList);
+        localStorage.setItem('sprintManagerData', JSON.stringify(sprintList));
 
-        localStorage.setItem(
-          'sprintManagerData',
-          JSON.stringify(sprintList)
-        );
+        // Seed sprintLocalDates
+        const dates = {};
+        sprintList.forEach((s) => {
+          dates[s.id] = { startDate: s.startDate || '', endDate: s.endDate || '' };
+        });
+        setSprintLocalDates(dates);
       } else {
-        throw new Error('No sprints found');
+        throw new Error('No sprints found in project');
       }
-    } catch (error) {
-      console.error('Error fetching sprints:', error);
 
-      setError(error.message);
-
-      setSprints([
-        {
-          id: 'default-1',
-          name: 'Sprint 1',
-          days: '14d',
-          status: 'Not Started',
-          startDate: null,
-          endDate: null,
-          selected: true,
-          color: 'bg-orange-200',
-          storiesCount: 0,
-          backlogCount: 0,
-          resourcesCount: 0,
-          totalStoryPoints: 0,
-          totalEffortHours: 0,
-        },
-      ]);
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      setError(err.message);
+      setSprints([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   // ============================================
-  // FORMAT DATE
+  // SAVE SPRINT DATE FROM MANAGER TABLE
   // ============================================
+
+  const saveSprintDateField = async (sprintId, field, value) => {
+    const projectId = localStorage.getItem('activeProjectId');
+    if (!projectId) return;
+
+    const sprint    = sprints.find((s) => s.id === sprintId);
+    if (!sprint) return;
+
+    const cur       = sprintLocalDates[sprintId] || {};
+    const startDate = cur.startDate || (field === 'startDate' ? value : sprint.startDate || '');
+    const endDate   = cur.endDate   || (field === 'endDate'   ? value : sprint.endDate   || '');
+
+    // Validation: end must be >= start
+    if (startDate && endDate && endDate < startDate) {
+      alert(`End date (${endDate}) cannot be before start date (${startDate}). Please correct the dates.`);
+      return;
+    }
+
+    // Validation: cannot be less than project creation date
+    const creationDate = isoToInput(projectMeta?.created_at || projectData?.created_at) || today();
+    if (startDate && startDate < creationDate) {
+      alert(`Start date (${startDate}) cannot be before project creation date (${creationDate}). Please correct the dates.`);
+      return;
+    }
+    if (endDate && endDate < creationDate) {
+      alert(`End date (${endDate}) cannot be before project creation date (${creationDate}). Please correct the dates.`);
+      return;
+    }
+
+    let diffDays = sprint.days;
+    if (startDate && endDate) {
+      const d = daysBetween(startDate, endDate);
+      if (d !== null) {
+        diffDays = `${d}d`;
+      }
+    }
+
+    // Update sprints state and cache
+    let updatedSprints = [];
+    setSprints((prev) => {
+      updatedSprints = prev.map((s) =>
+        s.id === sprintId ? { ...s, startDate, endDate, days: diffDays } : s
+      );
+      localStorage.setItem('sprintManagerData', JSON.stringify(updatedSprints));
+      return updatedSprints;
+    });
+
+    setSavingSprintDate((p) => ({ ...p, [sprintId]: 'saving' }));
+    try {
+      await fetch(API_ENDPOINTS.UPDATE_SPRINT_STATUS(projectId, sprintId), {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          status:     sprint.status || 'Not Started',
+          start_date: startDate,
+          end_date:   endDate,
+        }),
+      });
+      setSavingSprintDate((p) => ({ ...p, [sprintId]: 'saved' }));
+      setTimeout(() => setSavingSprintDate((p) => ({ ...p, [sprintId]: null })), 2500);
+    } catch (err) {
+      console.error('Failed to save sprint date:', err);
+      setSavingSprintDate((p) => ({ ...p, [sprintId]: 'error' }));
+    }
+  };
+
 
   const formatDate = (dateString) => {
     if (!dateString) {
@@ -631,61 +651,65 @@ const updateSprintStatus = (sprintId, newStatus) => {
     }
 
     const updatedSprint = {
-
       ...sprint,
-
       status: newStatus,
-
       startDate:
         newStatus === 'In Progress'
-          ? (
-              sprint.startDate ||
-              new Date()
-                .toISOString()
-                .split('T')[0]
-            )
+          ? (sprint.startDate || new Date().toISOString().split('T')[0])
           : sprint.startDate,
-
       endDate:
         newStatus === 'Completed'
-          ? new Date()
-              .toISOString()
-              .split('T')[0]
+          ? new Date().toISOString().split('T')[0]
           : sprint.endDate,
     };
 
-    // duration calculate
-    if (
-      updatedSprint.startDate &&
-      updatedSprint.endDate
-    ) {
+    // Auto-adjust start date if start date is after end date (preserves start <= end)
+    if (updatedSprint.startDate && updatedSprint.endDate && updatedSprint.startDate > updatedSprint.endDate) {
+      const projectMinDate = isoToInput(projectMeta?.created_at || projectData?.created_at) || today();
+      const fourteenDaysAgo = addDays(updatedSprint.endDate, -13);
+      if (fourteenDaysAgo >= projectMinDate) {
+        updatedSprint.startDate = fourteenDaysAgo;
+      } else {
+        updatedSprint.startDate = projectMinDate <= updatedSprint.endDate ? projectMinDate : updatedSprint.endDate;
+      }
+    }
 
-      const start = new Date(
-        updatedSprint.startDate
-      );
-
-      const end = new Date(
-        updatedSprint.endDate
-      );
-
-      const diffDays =
-        Math.ceil(
-          (end - start) /
-          (1000 * 60 * 60 * 24)
-        ) + 1;
-
+    if (updatedSprint.startDate && updatedSprint.endDate) {
+      const start   = new Date(updatedSprint.startDate);
+      const end     = new Date(updatedSprint.endDate);
+      const diffDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
       updatedSprint.days = `${diffDays}d`;
     }
 
-    // IMPORTANT
-    // UPDATE SELECTED SPRINT INFO ALSO
+    // Update sprintLocalDates state so the UI calendar pickers are perfectly synced
+    setSprintLocalDates((prev) => ({
+      ...prev,
+      [sprintId]: {
+        startDate: updatedSprint.startDate,
+        endDate:   updatedSprint.endDate,
+      },
+    }));
+
+    // Persist sprint status to the DB
+    const projectId = localStorage.getItem('activeProjectId');
+    if (projectId) {
+      fetch(API_ENDPOINTS.UPDATE_SPRINT_STATUS(projectId, sprintId), {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status:     newStatus,
+          start_date: updatedSprint.startDate,
+          end_date:   updatedSprint.endDate,
+        }),
+      }).catch(err => console.error('Failed to persist sprint status:', err));
+    }
 
     localStorage.setItem(
       'selectedSprintInfo',
       JSON.stringify({
         ...updatedSprint,
         start: updatedSprint.startDate,
-        end: updatedSprint.endDate,
+        end:   updatedSprint.endDate,
       })
     );
 
@@ -693,12 +717,9 @@ const updateSprintStatus = (sprintId, newStatus) => {
   });
 
   setSprints(updatedSprints);
-
-  localStorage.setItem(
-    'sprintManagerData',
-    JSON.stringify(updatedSprints)
-  );
+  localStorage.setItem('sprintManagerData', JSON.stringify(updatedSprints));
 };
+
   // ============================================
   // DROPDOWN ACTIONS
   // ============================================
@@ -878,6 +899,16 @@ const updateSprintStatus = (sprintId, newStatus) => {
             </div>
 
             <div className="flex items-center space-x-4">
+
+              <button
+                onClick={() => navigate('/projects')}
+                className="px-4 py-2 border border-indigo-300 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all duration-200 font-medium flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span>All Projects</span>
+              </button>
 
               <button
                 onClick={() => navigate('/planning')}
@@ -1111,7 +1142,7 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
           {/* TABLE */}
 
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-hidden">
 
             <table className="w-full">
 
@@ -1119,48 +1150,39 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                 <tr>
 
-                  <th className="w-12 px-6 py-4 text-left">
-
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-
-                  </th>
-
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-3 py-4 text-left text-sm font-semibold text-gray-700">
                     Name
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-2.5 py-4 text-center text-sm font-semibold text-gray-700">
                     Duration
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-2.5 py-4 text-left text-sm font-semibold text-gray-700">
                     Status
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-3 py-4 text-left text-sm font-semibold text-gray-700">
                     Start Date
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-3 py-4 text-left text-sm font-semibold text-gray-700">
                     End Date
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-2.5 py-4 text-center text-sm font-semibold text-gray-700">
                     Stories
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-2.5 py-4 text-center text-sm font-semibold text-gray-700">
                     Story Points
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-2.5 py-4 text-center text-sm font-semibold text-gray-700">
                     Team
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-3 py-4 text-left text-sm font-semibold text-gray-700">
                     Actions
                   </th>
 
@@ -1177,34 +1199,17 @@ const updateSprintStatus = (sprintId, newStatus) => {
                     className="hover:bg-purple-50/50 transition-colors"
                   >
 
-                    {/* CHECKBOX */}
-
-                    <td className="px-6 py-4">
-
-                      <input
-                        type="checkbox"
-                        checked={sprint.selected}
-                        onChange={() =>
-                          handleCheckboxChange(sprint.id)
-                        }
-                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      />
-
-                    </td>
-
                     {/* NAME */}
 
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                    <td className="px-3 py-4 text-sm text-gray-900 font-medium text-left">
 
                       {sprint.name}
 
                     </td>
 
-                    
-
                     {/* DURATION */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-2.5 py-4 text-sm text-gray-700 text-center">
 
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
 
@@ -1216,7 +1221,7 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                     {/* STATUS */}
 
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-2.5 py-4 text-sm text-left">
 
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
@@ -1230,25 +1235,88 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                     </td>
 
-                    {/* START DATE */}
+                    {/* START DATE — editable */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-3 py-4 text-sm text-gray-700 text-left">
+                      <div className="flex items-center gap-1.5 justify-start">
+                        <input
+                          type="date"
+                          value={sprintLocalDates[sprint.id]?.startDate || sprint.startDate || ''}
+                          min={isoToInput(projectMeta?.created_at || projectData?.created_at) || today()}
+                          max={sprintLocalDates[sprint.id]?.endDate || sprint.endDate || undefined}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const projectMinDate = isoToInput(projectMeta?.created_at || projectData?.created_at) || today();
+                            setSprintLocalDates((p) => {
+                              const cur = p[sprint.id] || {};
+                              const curEnd = cur.endDate || sprint.endDate || '';
+                              const updates = { ...cur, startDate: val };
 
-                      {formatDate(sprint.startDate)}
+                              if (val && val < projectMinDate) {
+                                updates.startDate = projectMinDate;
+                              }
 
+                              if (updates.startDate && curEnd && updates.startDate > curEnd) {
+                                updates.endDate = addDays(updates.startDate, 13);
+                              }
+                              return { ...p, [sprint.id]: updates };
+                            });
+                          }}
+                          onBlur={(e) => {
+                            const val = sprintLocalDates[sprint.id]?.startDate || e.target.value;
+                            if (val) {
+                              saveSprintDateField(sprint.id, 'startDate', val);
+                            }
+                          }}
+                          className="w-32 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white text-gray-700 cursor-pointer hover:border-indigo-300 transition-colors"
+                        />
+                        {savingSprintDate[sprint.id] === 'saving' && (
+                          <svg className="w-3 h-3 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        )}
+                        {savingSprintDate[sprint.id] === 'saved' && (
+                          <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                     </td>
 
-                    {/* END DATE */}
+                    {/* END DATE — editable */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
-
-                      {formatDate(sprint.endDate)}
-
+                    <td className="px-3 py-4 text-sm text-gray-700 text-left">
+                      <input
+                        type="date"
+                        value={sprintLocalDates[sprint.id]?.endDate || sprint.endDate || ''}
+                        min={sprintLocalDates[sprint.id]?.startDate || sprint.startDate || isoToInput(projectMeta?.created_at || projectData?.created_at) || today()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSprintLocalDates((p) => {
+                            const cur = p[sprint.id] || {};
+                            const updates = { ...cur, endDate: val };
+                            const projectMinDate = isoToInput(projectMeta?.created_at || projectData?.created_at) || today();
+                            const curStart = cur.startDate || sprint.startDate || projectMinDate;
+                            if (val && val < curStart) {
+                              updates.endDate = curStart;
+                            }
+                            return { ...p, [sprint.id]: updates };
+                          });
+                        }}
+                        onBlur={(e) => {
+                          const val = sprintLocalDates[sprint.id]?.endDate || e.target.value;
+                          if (val) {
+                            saveSprintDateField(sprint.id, 'endDate', val);
+                          }
+                        }}
+                        className="w-32 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white text-gray-700 cursor-pointer hover:border-indigo-300 transition-colors"
+                      />
                     </td>
 
                     {/* STORIES */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-2.5 py-4 text-sm text-gray-700 text-center">
 
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
 
@@ -1260,7 +1328,7 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                     {/* STORY POINTS */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-2.5 py-4 text-sm text-gray-700 text-center">
 
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
 
@@ -1272,7 +1340,7 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                     {/* TEAM */}
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-2.5 py-4 text-sm text-gray-700 text-center">
 
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
 
@@ -1284,7 +1352,7 @@ const updateSprintStatus = (sprintId, newStatus) => {
 
                     {/* ACTIONS */}
 
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4 text-left">
 
                       <div className="flex items-center space-x-2">
 

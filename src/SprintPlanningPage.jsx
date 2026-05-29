@@ -7,6 +7,7 @@ const SprintPlanningPage = () => {
   const navigate = useNavigate();
   const [productScope, setProductScope] = useState('');
   const [productScopePDF, setProductScopePDF] = useState(null);
+  const [projectName, setProjectName] = useState('');
   const [resources, setResources] = useState([{ 
     name: '', 
     skills: '', 
@@ -218,7 +219,12 @@ Success Criteria:
       // Prepare form data in the exact format your API expects
       const formData = new FormData();
       
-      // Add scope text (this was correct in your original code)
+      // Project name (optional)
+      if (projectName.trim()) {
+        formData.append('project_name', projectName.trim());
+      }
+      
+      // Add scope text
       formData.append('scope_text', productScope);
       
       // Add the PDF file if uploaded
@@ -289,22 +295,21 @@ console.log(
 
       const result = await response.json();
       
-      // Format the response for display
-      let formattedStories;
-      if (typeof result === 'string') {
-        formattedStories = result;
-      } else if (result.stories) {
-        formattedStories = result.stories;
-      } else if (result.message) {
-        formattedStories = result.message;
-      } else {
-        formattedStories = JSON.stringify(result, null, 2);
+      // Store project_id so ProjectsPage / SprintManager know which project is active
+      if (result.project_id) {
+        localStorage.setItem('activeProjectId',   result.project_id);
+        localStorage.setItem('activeProjectName', result.project_name || projectName || 'Project');
+        // Clear stale data from previous sessions
+        localStorage.removeItem('sprintManagerData');
+        localStorage.removeItem('projectData');
+        localStorage.removeItem('selectedSprintData');
+        localStorage.removeItem('selectedSprintInfo');
       }
+
+      setGeneratedStories(JSON.stringify(result, null, 2));
       
-      setGeneratedStories(formattedStories);
-      
-      // Optional: Navigate to sprint manager after successful generation
-       navigate('/sprintmanager');
+      // Navigate to Projects page so user can see all their projects
+      navigate('/projects');
 
     } catch (error) {
       console.error('Error calling API:', error);
@@ -358,7 +363,30 @@ console.log(
           {/* Left Column - Input Forms */}
           <div className="space-y-6">
             
+          {/* Project Name Section */}
+            <section className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-indigo-200/50 p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-lg flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Project Name</h3>
+              </div>
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="e.g. E-Commerce Platform Q3 2026 (optional — auto-generated if blank)"
+                className="w-full p-4 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/50 backdrop-blur-sm text-gray-800 placeholder-gray-400"
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                Give your project a memorable name. If left blank, the AI will name it automatically.
+              </p>
+            </section>
+
             {/* Product Scope Section */}
+
             <section className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-orange-200/50 p-6">
               <div className="flex items-center mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mr-3">
